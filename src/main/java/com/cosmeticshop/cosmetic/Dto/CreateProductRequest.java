@@ -6,6 +6,9 @@ public class CreateProductRequest {
     private String description;
     private String imageUrl;
     private Integer stockQuantity;
+    private String brandName;
+    private String Origin;
+    private String categoryName;
     private Long brandId;
     private Long categoryId;
 
@@ -64,5 +67,29 @@ public class CreateProductRequest {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public String getBrandName() {
+        return brandName;
+    }
+
+    public void setBrandName(String brandName) {
+        this.brandName = brandName;
+    }
+
+    public String getOrigin() {
+        return Origin;
+    }
+
+    public void setOrigin(String Origin) {
+        this.Origin = Origin;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
     }
 }

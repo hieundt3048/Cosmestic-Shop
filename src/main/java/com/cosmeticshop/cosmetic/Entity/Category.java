@@ -23,9 +23,6 @@ public class Category {
 
     @Column(name = "name", nullable = false)
     private String name;
-
-    @Column(name = "description")
-    private String description;
     
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     @JsonManagedReference
@@ -41,17 +38,12 @@ public class Category {
     public String getName() {
         return name;
     }
-    public void setDescription(String description) {
-        this.description = description;
+    public void setName(String name){
+        this.name = name;
     }
-    public String getDescription() {
-        return description;
-    }
-
     public List<Product> getProducts() {
         return products;
     }
-
     public void setProducts(List<Product> products) {
         this.products = products;
     }

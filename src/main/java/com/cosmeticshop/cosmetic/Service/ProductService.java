@@ -38,12 +38,19 @@ public class ProductService {
     
     //lưu sản phẩm
     public Product createProduct(CreateProductRequest request){
+
+        Brand brand = new Brand();
+        brand.setName(request.getBrandName());
+        brand.setOrigin(request.getOrigin());
+        Category category = new Category();
+        category.setName(request.getCategoryName());    
+
         // Tìm Brand từ database
-        Brand brand = brandRepository.findById(request.getBrandId())
+        brand = brandRepository.findById(request.getBrandId())
             .orElseThrow(() -> new RuntimeException("Không tìm thấy Brand với id: " + request.getBrandId()));
         
         // Tìm Category từ database
-        Category category = categoryRepository.findById(request.getCategoryId())
+        category = categoryRepository.findById(request.getCategoryId())
             .orElseThrow(() -> new RuntimeException("Không tìm thấy Category với id: " + request.getCategoryId()));
 
         // Tạo Product entity
@@ -56,6 +63,8 @@ public class ProductService {
         product.setBrand(brand);
         product.setCategory(category);
         
+        brandRepository.save(brand);
+        categoryRepository.save(category);
         return productRepository.save(product);
     }
 

@@ -15,7 +15,7 @@ import com.cosmeticshop.cosmetic.Service.ProductService;
 
 
 @RestController
-@RequestMapping("/products")
+@RequestMapping("/api/products")
 public class ProductController {
 
     private final ProductService productService;
