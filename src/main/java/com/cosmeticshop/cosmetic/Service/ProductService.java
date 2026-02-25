@@ -7,6 +7,7 @@ import com.cosmeticshop.cosmetic.Dto.CreateProductRequest;
 import com.cosmeticshop.cosmetic.Entity.Brand;
 import com.cosmeticshop.cosmetic.Entity.Category;
 import com.cosmeticshop.cosmetic.Entity.Product;
+import com.cosmeticshop.cosmetic.Exception.ResourceNotFoundException;
 import com.cosmeticshop.cosmetic.Repository.BrandRepository;
 import com.cosmeticshop.cosmetic.Repository.CategoryRepository;
 import com.cosmeticshop.cosmetic.Repository.ProductRepository;
@@ -47,11 +48,11 @@ public class ProductService {
 
         // Tìm Brand từ database
         brand = brandRepository.findById(request.getBrandId())
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy Brand với id: " + request.getBrandId()));
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Brand với id: " + request.getBrandId()));
         
         // Tìm Category từ database
         category = categoryRepository.findById(request.getCategoryId())
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy Category với id: " + request.getCategoryId()));
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Category với id: " + request.getCategoryId()));
 
         // Tạo Product entity
         Product product = new Product();
