@@ -2,6 +2,7 @@ package com.cosmeticshop.cosmetic.Entity;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.Column;
@@ -25,6 +26,7 @@ public class User {
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
+    @JsonIgnore  // QUAN TRỌNG: Không trả password về client
     @Column(name = "password", nullable = false)
     private String password;
 

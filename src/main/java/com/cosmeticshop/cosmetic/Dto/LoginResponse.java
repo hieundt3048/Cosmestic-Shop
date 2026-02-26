@@ -11,7 +11,9 @@ public class LoginResponse {
     public LoginResponse(){
     }
 
-    public LoginResponse(User user, String message){
+    public LoginResponse(String token, User user, String message){
+        this.token = token;
+        this.user = user;
         this.message = message;
     }
 

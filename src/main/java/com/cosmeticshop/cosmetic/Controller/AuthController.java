@@ -1,5 +1,7 @@
 package com.cosmeticshop.cosmetic.Controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,10 +10,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cosmeticshop.cosmetic.Config.JwtUtil;
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
+import com.cosmeticshop.cosmetic.Exception.TooManyRequestsException;
+import com.cosmeticshop.cosmetic.Service.LoginAttemptService;
 import com.cosmeticshop.cosmetic.Service.UserService;
 
 import jakarta.validation.Valid;
@@ -19,10 +24,17 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    
     private final UserService userService;
+    private final JwtUtil jwtUtil;
+    private final LoginAttemptService loginAttemptService;
 
-    public AuthController(UserService userService){
+    public AuthController(UserService userService, JwtUtil jwtUtil, LoginAttemptService loginAttemptService){
         this.userService = userService;
+        this.jwtUtil = jwtUtil;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @PostMapping("/register")
@@ -36,15 +48,72 @@ public class AuthController {
         return ResponseEntity.ok("Xóa user thành công với ID: " + id);
     }
 
-    //Đăng nhập
+    /**
+     * Đăng nhập - Login endpoint với Rate Limiting
+     * 
+     * Flow:
+     * 1. Validate request (username, password không empty)
+     * 2. Check rate limiting - user có bị block không
+     * 3. Authenticate user (check username/password với database)
+     * 4. Generate JWT token từ user info
+     * 5. Reset login attempts khi thành công
+     * 6. Return token + user info trong response
+     * 
+     * Client sẽ lưu token và gửi kèm trong header cho các request sau
+     */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request){
+        // Bước 1: Validate request
         validationLoginRequest(request);
+        
+        String username = request.getUsername();
 
-        User user = userService.authenticate(request.getUsername(), request.getPassword());
+        // Bước 2: Check rate limiting - user có bị block không
+        if (loginAttemptService.isBlocked(username)) {
+            long blockedMinutes = loginAttemptService.getBlockedMinutesRemaining(username);
+            logger.warn("Login attempt from blocked user '{}'. Blocked for {} more minutes", 
+                       username, blockedMinutes);
+            throw new TooManyRequestsException(
+                String.format("Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần. Vui lòng thử lại sau %d phút.", 
+                             blockedMinutes),
+                blockedMinutes
+            );
+        }
 
-        LoginResponse response = new LoginResponse(user, "Đăng nhập thành công");
-        return ResponseEntity.ok(response);
+        try {
+            // Bước 3: Authenticate user - verify username và password
+            User user = userService.authenticate(username, request.getPassword());
+
+            // Bước 4: Generate JWT token từ user info
+            String token = jwtUtil.generateToken(user);
+
+            // Bước 5: Reset login attempts khi login thành công
+            loginAttemptService.loginSucceeded(username);
+
+            // Bước 6: Tạo response với token, user info và message
+            LoginResponse response = new LoginResponse(token, user, "Đăng nhập thành công");
+            
+            logger.info("User '{}' logged in successfully", username);
+            
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            // Login thất bại - ghi nhận attempt
+            loginAttemptService.loginFailed(username);
+            
+            int remainingAttempts = loginAttemptService.getRemainingAttempts(username);
+            
+            if (remainingAttempts > 0) {
+                logger.warn("Login failed for user '{}'. {} attempts remaining", 
+                           username, remainingAttempts);
+                throw new RuntimeException(
+                    String.format("%s. Còn %d lần thử.", e.getMessage(), remainingAttempts)
+                );
+            } else {
+                logger.error("User '{}' has been blocked due to too many failed login attempts", username);
+                throw new RuntimeException("Đăng nhập thất bại quá nhiều lần. Tài khoản đã bị khóa tạm thời.");
+            }
+        }
     }
 
     //Xác thực yêu cầu đăng nhập
