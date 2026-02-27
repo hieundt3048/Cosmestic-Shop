@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.cosmeticshop.cosmetic.Exception.SecurityExceptionHandler;
+import com.cosmeticshop.cosmetic.Service.ITokenService;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -34,17 +35,20 @@ import jakarta.servlet.http.HttpServletResponse;
  * 6. Request tiếp tục đến controller
  * 
  * OncePerRequestFilter: Đảm bảo filter chỉ chạy 1 lần cho mỗi request
+ * 
+ * Tuân thủ Dependency Inversion Principle (DIP) - phụ thuộc vào ITokenService interface
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
-    private final JwtUtil jwtUtil;
+    // DIP: Phụ thuộc vào interface thay vì concrete class
+    private final ITokenService tokenService;
     private final UserDetailsService userDetailsService;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
-        this.jwtUtil = jwtUtil;
+    public JwtAuthenticationFilter(ITokenService tokenService, UserDetailsService userDetailsService) {
+        this.tokenService = tokenService;
         this.userDetailsService = userDetailsService;
     }
 
@@ -68,8 +72,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Bước 3: Trích xuất token (bỏ phần "Bearer " ở đầu)
             final String jwt = authHeader.substring(7);
 
-            // Bước 4: Lấy username từ token
-            final String username = jwtUtil.extractUsername(jwt);
+            // Bước 4: Lấy username từ token - DIP: sử dụng TokenService interface
+            final String username = tokenService.extractUsername(jwt);
 
             // Bước 5: Kiểm tra username có tồn tại và user chưa được authenticate
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -77,8 +81,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // Bước 6: Load user details từ database
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // Bước 7: Validate token với username
-                if (jwtUtil.validateToken(jwt, userDetails.getUsername())) {
+                // Bước 7: Validate token với username - DIP: sử dụng TokenService interface
+                if (tokenService.validateToken(jwt, userDetails.getUsername())) {
                     
                     // Bước 8: Tạo Authentication object
                     // UsernamePasswordAuthenticationToken: Object chứa thông tin xác thực
@@ -122,3 +126,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 }
+

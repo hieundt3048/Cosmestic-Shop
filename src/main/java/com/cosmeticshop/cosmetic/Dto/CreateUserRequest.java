@@ -1,14 +1,38 @@
 package com.cosmeticshop.cosmetic.Dto;
 
 import com.cosmeticshop.cosmetic.Entity.User;
+import com.cosmeticshop.cosmetic.Validation.ValidPassword;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+/**
+ * CreateUserRequest - DTO cho registration với password validation
+ */
 public class CreateUserRequest {
 
+    @NotBlank(message = "Username không được để trống")
+    @Size(min = 3, max = 50, message = "Username phải từ 3-50 ký tự")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Username chỉ chứa chữ cái, số và dấu gạch dưới")
     private String username;
+    
+    @NotBlank(message = "Mật khẩu không được để trống")
+    @ValidPassword  // Custom validator cho password strength
     private String password;
+    
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
     private String email;
+    
+    @NotBlank(message = "Số điện thoại không được để trống")
+    @Pattern(regexp = "^0[0-9]{9}$", message = "Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 số)")
     private String phone;
+    
+    @Size(max = 100, message = "Họ tên không được quá 100 ký tự")
     private String fullName;
+    
     private User.Role role;
 
     //Getter && Setter

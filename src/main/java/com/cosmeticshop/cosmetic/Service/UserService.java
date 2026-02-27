@@ -38,6 +38,19 @@ public class UserService {
         if(userRepository.findByPhone(request.getPhone()).isPresent()){
             throw new RuntimeException("Số điện thoại đã tồn tại");
         }
+        
+        // Kiểm tra password không chứa username hoặc email
+        String passwordLower = request.getPassword().toLowerCase();
+        String usernameLower = request.getUsername().toLowerCase();
+        String emailLocalPart = request.getEmail().split("@")[0].toLowerCase();
+        
+        if(passwordLower.contains(usernameLower)){
+            throw new RuntimeException("Mật khẩu không được chứa tên đăng nhập");
+        }
+        
+        if(passwordLower.contains(emailLocalPart)){
+            throw new RuntimeException("Mật khẩu không được chứa email");
+        }
 
         User user = new User();
         user.setUsername(request.getUsername());

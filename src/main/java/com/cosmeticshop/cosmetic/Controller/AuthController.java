@@ -3,49 +3,68 @@ package com.cosmeticshop.cosmetic.Controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.cosmeticshop.cosmetic.Config.JwtUtil;
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Exception.TooManyRequestsException;
+import com.cosmeticshop.cosmetic.Service.IAuthenticationService;
+import com.cosmeticshop.cosmetic.Service.ITokenService;
+import com.cosmeticshop.cosmetic.Service.IUserManagementService;
 import com.cosmeticshop.cosmetic.Service.LoginAttemptService;
-import com.cosmeticshop.cosmetic.Service.UserService;
 
 import jakarta.validation.Valid;
 
+/**
+ * Authentication Controller - Xử lý authentication requests
+ * 
+ * Responsibility: CHỈ handle authentication (login, register)
+ * - Đăng ký user mới
+ * - Đăng nhập và generate token
+ * - Rate limiting cho login
+ * 
+ * KHÔNG handle user management (CRUD) - đó là việc của UserController
+ * 
+ * Tuân thủ Single Responsibility Principle (SRP)
+ * Tuân thủ Dependency Inversion Principle (DIP) - phụ thuộc vào interface
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
     
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     
-    private final UserService userService;
-    private final JwtUtil jwtUtil;
+    // DIP: Phụ thuộc vào interface thay vì concrete class
+    private final IAuthenticationService authenticationService;
+    private final IUserManagementService userManagementService;
+    private final ITokenService tokenService;
     private final LoginAttemptService loginAttemptService;
 
-    public AuthController(UserService userService, JwtUtil jwtUtil, LoginAttemptService loginAttemptService){
-        this.userService = userService;
-        this.jwtUtil = jwtUtil;
+    public AuthController(
+        IAuthenticationService authenticationService,
+        IUserManagementService userManagementService,
+        ITokenService tokenService,
+        LoginAttemptService loginAttemptService
+    ) {
+        this.authenticationService = authenticationService;
+        this.userManagementService = userManagementService;
+        this.tokenService = tokenService;
         this.loginAttemptService = loginAttemptService;
     }
 
+    /**
+     * Đăng ký user mới
+     * POST /api/auth/register
+     */
     @PostMapping("/register")
-    public User register(@RequestBody @Valid CreateUserRequest request){
-        return userService.createUser(request);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id){
-        userService.deleteUser(id);
-        return ResponseEntity.ok("Xóa user thành công với ID: " + id);
+    public User register(@RequestBody @Valid CreateUserRequest request) {
+        logger.info("New user registration request: {}", request.getUsername());
+        return userManagementService.createUser(request);
     }
 
     /**
@@ -62,7 +81,7 @@ public class AuthController {
      * Client sẽ lưu token và gửi kèm trong header cho các request sau
      */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request){
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         // Bước 1: Validate request
         validationLoginRequest(request);
         
@@ -81,11 +100,11 @@ public class AuthController {
         }
 
         try {
-            // Bước 3: Authenticate user - verify username và password
-            User user = userService.authenticate(username, request.getPassword());
+            // Bước 3: Authenticate user - SRP: delegate to AuthenticationService
+            User user = authenticationService.authenticate(username, request.getPassword());
 
-            // Bước 4: Generate JWT token từ user info
-            String token = jwtUtil.generateToken(user);
+            // Bước 4: Generate JWT token - SRP: delegate to TokenService
+            String token = tokenService.generateToken(user);
 
             // Bước 5: Reset login attempts khi login thành công
             loginAttemptService.loginSucceeded(username);
@@ -116,16 +135,16 @@ public class AuthController {
         }
     }
 
-    //Xác thực yêu cầu đăng nhập
-    public void validationLoginRequest(LoginRequest request){
-
-        if(request.getUsername() == null || request.getUsername().trim().isEmpty()){
+    /**
+     * Xác thực yêu cầu đăng nhập
+     */
+    private void validationLoginRequest(LoginRequest request) {
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
             throw new RuntimeException("Tên đăng nhập không được để trống");
         }
 
-        if(request.getPassword() == null || request.getPassword().trim().isEmpty()){
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
             throw new RuntimeException("Mật khẩu không được để trống");
         }
     }
-
 }

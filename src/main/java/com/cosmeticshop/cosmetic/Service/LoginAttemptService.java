@@ -9,12 +9,6 @@ import org.springframework.stereotype.Service;
 
 /**
  * LoginAttemptService - Quản lý và giới hạn số lần đăng nhập thất bại
- * 
- * Chức năng:
- * - Track số lần login thất bại theo username
- * - Block user sau X lần thất bại trong khoảng thời gian Y
- * - Tự động reset sau khi hết thời gian block
- * 
  * Bảo vệ khỏi Brute Force Attack
  */
 @Service
@@ -82,9 +76,6 @@ public class LoginAttemptService {
 
     /**
      * Kiểm tra username có bị block không
-     * 
-     * @param username Username cần check
-     * @return true nếu bị block, false nếu không
      */
     public boolean isBlocked(String username) {
         LoginAttempt attempt = attemptsCache.get(username);
@@ -96,8 +87,6 @@ public class LoginAttemptService {
 
     /**
      * Ghi nhận login thất bại
-     * 
-     * @param username Username login thất bại
      */
     public void loginFailed(String username) {
         LoginAttempt attempt = attemptsCache.computeIfAbsent(
@@ -120,8 +109,6 @@ public class LoginAttemptService {
 
     /**
      * Reset login attempts khi login thành công
-     * 
-     * @param username Username login thành công
      */
     public void loginSucceeded(String username) {
         LoginAttempt attempt = attemptsCache.get(username);
@@ -135,9 +122,6 @@ public class LoginAttemptService {
 
     /**
      * Lấy số lần login thất bại còn lại
-     * 
-     * @param username Username cần check
-     * @return Số lần còn lại trước khi bị block
      */
     public int getRemainingAttempts(String username) {
         LoginAttempt attempt = attemptsCache.get(username);
@@ -149,9 +133,6 @@ public class LoginAttemptService {
 
     /**
      * Lấy thời gian còn lại của block (phút)
-     * 
-     * @param username Username cần check
-     * @return Số phút còn lại, hoặc 0 nếu không bị block
      */
     public long getBlockedMinutesRemaining(String username) {
         LoginAttempt attempt = attemptsCache.get(username);
@@ -164,8 +145,6 @@ public class LoginAttemptService {
 
     /**
      * Manual unblock user (cho admin)
-     * 
-     * @param username Username cần unblock
      */
     public void unblock(String username) {
         attemptsCache.remove(username);
