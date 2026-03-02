@@ -89,6 +89,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/brands/**").permitAll()         // Xem brands
                 .requestMatchers("/api/categories/**").permitAll()     // Xem categories
                 .requestMatchers("/api/products/**").permitAll()       // Xem products
+                .requestMatchers("/api/seed/**").permitAll()          // Seed data
                 
                 // Protected endpoints - cần authentication
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

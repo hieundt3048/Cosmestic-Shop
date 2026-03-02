@@ -21,10 +21,10 @@ public class Brand {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, columnDefinition = "NVARCHAR(255)")
     private String name;
 
-    @Column(name = "origin")
+    @Column(name = "origin", columnDefinition = "NVARCHAR(255)")
     private String origin;
 
     @OneToMany(mappedBy = "brand", cascade = CascadeType.ALL)

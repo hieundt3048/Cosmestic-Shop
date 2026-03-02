@@ -53,7 +53,7 @@ public class Order {
     private User user;
     
 
-    @Column(name = "shipping_address")
+    @Column(name = "shipping_address", columnDefinition = "NVARCHAR(500)")
     private String shippingAddress;
 
     //getter && setter

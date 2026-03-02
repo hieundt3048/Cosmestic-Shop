@@ -25,16 +25,16 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, columnDefinition = "NVARCHAR(255)")
     private String name;
 
     @Column(name = "price", nullable = false)
     private Double price;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
-    @Column(name = "image_url", nullable = false)
+    @Column(name = "image_url", nullable = false, columnDefinition = "NVARCHAR(500)")
     private String imageUrl;
 
     @Column(name = "stock_quantity", nullable = false)
@@ -50,7 +50,7 @@ public class Product {
     @JsonBackReference
     private Category category;
 
-    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<Review> reviews;
 

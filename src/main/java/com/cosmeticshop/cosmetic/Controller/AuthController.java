@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginResponse;
+import com.cosmeticshop.cosmetic.Dto.RegisterResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Exception.TooManyRequestsException;
 import com.cosmeticshop.cosmetic.Service.IAuthenticationService;
@@ -62,9 +63,31 @@ public class AuthController {
      * POST /api/auth/register
      */
     @PostMapping("/register")
-    public User register(@RequestBody @Valid CreateUserRequest request) {
+    public ResponseEntity<RegisterResponse> register(@RequestBody @Valid CreateUserRequest request) {
         logger.info("New user registration request: {}", request.getUsername());
-        return userManagementService.createUser(request);
+        
+        try {
+            // Bước 1-3: Tạo user mới (validation tự động được gọi trong service)
+            User user = userManagementService.createUser(request);
+            
+            // Bước 4: Auto-login - generate token cho user mới
+            String token = tokenService.generateToken(user);
+            
+            // Bước 5: Tạo response
+            RegisterResponse response = new RegisterResponse(
+                "Đăng ký thành công! Bạn đã được tự động đăng nhập.",
+                user,
+                token
+            );
+            
+            logger.info("User '{}' registered successfully with ID: {}", user.getUsername(), user.getId());
+            
+            return ResponseEntity.status(201).body(response);
+            
+        } catch (RuntimeException e) {
+            logger.error("Registration failed for username '{}': {}", request.getUsername(), e.getMessage());
+            throw e;
+        }
     }
 
     /**

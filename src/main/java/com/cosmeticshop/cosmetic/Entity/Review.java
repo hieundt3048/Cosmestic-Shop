@@ -24,16 +24,13 @@ public class Review {
     @Column(name = "rating", nullable = false)
     private Integer rating;
 
-    @Column(name = "comment")
+    @Column(name = "comment", columnDefinition = "NVARCHAR(MAX)")
     private String comment;
 
-    @Column(name = "product_id", nullable = false)
-    private Long productId;
-
     @ManyToOne
-    @JoinColumn(name = "review_id", nullable = false)
+    @JoinColumn(name = "product_id", nullable = false)
     @JsonBackReference
-    private Product review;
+    private Product product;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
@@ -60,11 +57,11 @@ public class Review {
     public void setComment(String comment) {
         this.comment = comment;
     }
-    public Long getProductId() {
-        return productId;
+    public Product getProduct() {
+        return product;
     }
-    public void setProductId(Long productId) {
-        this.productId = productId;
+    public void setProduct(Product product) {
+        this.product = product;
     }
     public Long getUserId() {
         return userId;
@@ -77,12 +74,5 @@ public class Review {
     }
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public Product getReview() {
-        return review;
-    }
-    public void setReview(Product review) {
-        this.review = review;
     }
 }

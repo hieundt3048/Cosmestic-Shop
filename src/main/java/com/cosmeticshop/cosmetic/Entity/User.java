@@ -23,20 +23,20 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", nullable = false, unique = true)
+    @Column(name = "username", nullable = false, unique = true, columnDefinition = "NVARCHAR(255)")
     private String username;
 
     @JsonIgnore  //Không trả password về client
-    @Column(name = "password", nullable = false)
+    @Column(name = "password", nullable = false, columnDefinition = "NVARCHAR(255)")
     private String password;
 
-    @Column(name = "email", nullable = false, unique = true)
+    @Column(name = "email", nullable = false, unique = true, columnDefinition = "NVARCHAR(255)")
     private String email;
 
-    @Column(name = "phone", nullable = false, unique = true)
+    @Column(name = "phone", nullable = false, unique = true, columnDefinition = "NVARCHAR(20)")
     private String phone;
 
-    @Column(name = "full_name")
+    @Column(name = "full_name", columnDefinition = "NVARCHAR(255)")
     private String fullName;
 
     @OneToMany(mappedBy = "user")
