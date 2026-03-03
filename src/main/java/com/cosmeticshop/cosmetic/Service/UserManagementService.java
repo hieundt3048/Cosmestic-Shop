@@ -1,6 +1,7 @@
 package com.cosmeticshop.cosmetic.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.UserListItemResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Repository.UserRepository;
 
@@ -56,7 +59,33 @@ public class UserManagementService implements IUserManagementService {
         
         return savedUser;
     }
-    
+
+    @Override
+    @Transactional
+    public UserListItemResponse createEmployee(CreateUserRequest request) {
+        request.setRole(User.Role.EMPLOYEE);
+        User createdUser = createUser(request);
+        return toUserListItemResponse(createdUser);
+    }
+
+    @Override
+    public User updateUser(Long id, UpdateUserRequest request){
+        User user = userRepository.findById(id)
+        .orElseThrow(() -> {
+                logger.warn("User with ID '{}' not found", id);
+                return new RuntimeException("User không tồn tại với ID: " + id);
+            });
+        
+        user.setUsername(request.getUsername());
+        user.setFullName(request.getFullName());
+        user.setPassword(request.getPassword());
+        user.setEmail(request.getEmail());
+
+        
+        User savedUser = userRepository.save(user);
+        return savedUser;
+    }
+
     @Override
     @Transactional
     public void deleteUser(Long id) {
@@ -95,5 +124,33 @@ public class UserManagementService implements IUserManagementService {
                 logger.warn("User with username '{}' not found", username);
                 return new RuntimeException("User không tồn tại với username: " + username);
             });
+    }
+
+    @Override
+    public List<UserListItemResponse> getCustomers() {
+        logger.debug("Fetching users with role CUSTOMER");
+        return userRepository.findByRole(User.Role.CUSTOMER).stream()
+                .map(this::toUserListItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UserListItemResponse> getEmployees() {
+        logger.debug("Fetching users with role EMPLOYEE");
+        return userRepository.findByRole(User.Role.EMPLOYEE).stream()
+                .map(this::toUserListItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    private UserListItemResponse toUserListItemResponse(User user) {
+        int totalOrders = user.getOrders() == null ? 0 : user.getOrders().size();
+        return new UserListItemResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getRole().name(),
+                totalOrders);
     }
 }

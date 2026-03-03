@@ -1,17 +1,15 @@
 package com.cosmeticshop.cosmetic.Dto;
 
-import com.cosmeticshop.cosmetic.Entity.User;
-
 public class LoginResponse {
 
     private String token;
     private String message;
-    private User user;
+    private LoginUserDto user;
 
     public LoginResponse(){
     }
 
-    public LoginResponse(String token, User user, String message){
+    public LoginResponse(String token, LoginUserDto user, String message){
         this.token = token;
         this.user = user;
         this.message = message;
@@ -33,11 +31,11 @@ public class LoginResponse {
         this.message = message;
     }
 
-    public User getUser(){
+    public LoginUserDto getUser(){
         return user;
     }
 
-    public void setUser(User user){
+    public void setUser(LoginUserDto user){
         this.user = user;
     }
 }

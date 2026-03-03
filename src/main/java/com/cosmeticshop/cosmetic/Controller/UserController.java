@@ -8,11 +8,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.UserListItemResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Service.IUserManagementService;
+
+import jakarta.validation.Valid;
 
 /**
  * Responsibility: CHỈ handle các request liên quan đến user management
@@ -39,6 +47,36 @@ public class UserController {
         List<User> users = userManagementService.getAllUsers();
         return ResponseEntity.ok(users);
     }
+
+    /**
+     * Lấy danh sách khách hàng
+     * GET /api/users/customers
+     */
+    @GetMapping("/customers")
+    public ResponseEntity<List<UserListItemResponse>> getCustomers() {
+        logger.info("Fetching users with role CUSTOMER");
+        return ResponseEntity.ok(userManagementService.getCustomers());
+    }
+
+    /**
+     * Lấy danh sách nhân viên
+     * GET /api/users/employees
+     */
+    @GetMapping("/employees")
+    public ResponseEntity<List<UserListItemResponse>> getEmployees() {
+        logger.info("Fetching users with role EMPLOYEE");
+        return ResponseEntity.ok(userManagementService.getEmployees());
+    }
+
+    /**
+     * Tạo nhân viên mới
+     * POST /api/users/employees
+     */
+    @PostMapping("/employees")
+    public ResponseEntity<UserListItemResponse> createEmployee(@Valid @RequestBody CreateUserRequest request) {
+        logger.info("Creating employee user: {}", request.getUsername());
+        return ResponseEntity.status(201).body(userManagementService.createEmployee(request));
+    }
     
     /**
      * Lấy user theo ID
@@ -60,5 +98,14 @@ public class UserController {
         logger.info("Deleting user with ID: {}", id);
         userManagementService.deleteUser(id);
         return ResponseEntity.ok("Xóa user thành công với ID: " + id);
+    }
+
+    /**
+     * Chỉnh sửa thông tin User
+     */
+    @PutMapping("/update")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request){
+        logger.info("Update user with ID: {}", id);
+        return ResponseEntity.ok(userManagementService.updateUser(id, request));
     }
 }

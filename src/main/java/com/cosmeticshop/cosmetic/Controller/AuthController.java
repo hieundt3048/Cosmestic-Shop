@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginRequest;
 import com.cosmeticshop.cosmetic.Dto.LoginResponse;
+import com.cosmeticshop.cosmetic.Dto.LoginUserDto;
 import com.cosmeticshop.cosmetic.Dto.RegisterResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Exception.TooManyRequestsException;
@@ -133,7 +134,13 @@ public class AuthController {
             loginAttemptService.loginSucceeded(username);
 
             // Bước 6: Tạo response với token, user info và message
-            LoginResponse response = new LoginResponse(token, user, "Đăng nhập thành công");
+            LoginUserDto safeUser = new LoginUserDto(
+                user.getId(),
+                user.getUsername(),
+                user.getFullName(),
+                user.getRole().name()
+            );
+            LoginResponse response = new LoginResponse(token, safeUser, "Đăng nhập thành công");
             
             logger.info("User '{}' logged in successfully", username);
             

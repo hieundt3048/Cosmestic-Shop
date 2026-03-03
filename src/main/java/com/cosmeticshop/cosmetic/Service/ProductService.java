@@ -1,9 +1,11 @@
 package com.cosmeticshop.cosmetic.Service;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.cosmeticshop.cosmetic.Dto.CreateProductRequest;
+import com.cosmeticshop.cosmetic.Dto.ProductResponse;
 import com.cosmeticshop.cosmetic.Entity.Brand;
 import com.cosmeticshop.cosmetic.Entity.Category;
 import com.cosmeticshop.cosmetic.Entity.Product;
@@ -28,17 +30,21 @@ public class ProductService {
     }
 
     //Lấy tất cả sản phẩm
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findAll().stream()
+                .map(this::toProductResponse)
+                .collect(Collectors.toList());
     }
 
     //lấy sản phẩm theo id
-    public Product getProductById(Long id){
-        return productRepository.findById(id).orElse(null);
+    public ProductResponse getProductById(Long id){
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Product với id: " + id));
+        return toProductResponse(product);
     }
     
     //lưu sản phẩm
-    public Product createProduct(CreateProductRequest request){
+    public ProductResponse createProduct(CreateProductRequest request){
 
         Brand brand = new Brand();
         brand.setName(request.getBrandName());
@@ -64,13 +70,41 @@ public class ProductService {
         product.setBrand(brand);
         product.setCategory(category);
         
-        brandRepository.save(brand);
-        categoryRepository.save(category);
-        return productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
+        return toProductResponse(savedProduct);
     }
 
-    public List<Product> searchProduct(String query){
+    public List<ProductResponse> searchProduct(String query){
         // Implement search logic here
-        return productRepository.findAll(); // Placeholder
+        return productRepository.findAll().stream()
+                .map(this::toProductResponse)
+                .collect(Collectors.toList());
+    }
+
+    private ProductResponse toProductResponse(Product product) {
+        ProductResponse.BrandSummary brandSummary = null;
+        if (product.getBrand() != null) {
+            brandSummary = new ProductResponse.BrandSummary(
+                    product.getBrand().getId(),
+                    product.getBrand().getName(),
+                    product.getBrand().getOrigin());
+        }
+
+        ProductResponse.CategorySummary categorySummary = null;
+        if (product.getCategory() != null) {
+            categorySummary = new ProductResponse.CategorySummary(
+                    product.getCategory().getId(),
+                    product.getCategory().getName());
+        }
+
+        return new ProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                product.getDescription(),
+                product.getImageUrl(),
+                product.getStockQuantity(),
+                brandSummary,
+                categorySummary);
     }
 }

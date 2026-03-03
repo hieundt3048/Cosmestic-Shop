@@ -36,10 +36,9 @@ public class PasswordStrengthValidationHandler extends AbstractValidationHandler
         }
         
         if (email != null && !email.trim().isEmpty()) {
-            String emailLower = email.toLowerCase();
-            String emailUsername = emailLower.split("@")[0];
-            
-            if (passwordLower.contains(emailUsername)) {
+            String emailLower = email.toLowerCase().trim();
+
+            if (passwordLower.contains(emailLower)) {
                 logger.warn("Password strength validation failed: password contains email");
                 throw new RuntimeException("Mật khẩu không được chứa địa chỉ email");
             }
