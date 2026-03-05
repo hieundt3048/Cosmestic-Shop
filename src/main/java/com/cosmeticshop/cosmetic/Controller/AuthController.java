@@ -15,6 +15,7 @@ import com.cosmeticshop.cosmetic.Dto.LoginUserDto;
 import com.cosmeticshop.cosmetic.Dto.RegisterResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Exception.TooManyRequestsException;
+import com.cosmeticshop.cosmetic.Service.IActiveUserTrackingService;
 import com.cosmeticshop.cosmetic.Service.IAuthenticationService;
 import com.cosmeticshop.cosmetic.Service.ITokenService;
 import com.cosmeticshop.cosmetic.Service.IUserManagementService;
@@ -45,17 +46,20 @@ public class AuthController {
     private final IAuthenticationService authenticationService;
     private final IUserManagementService userManagementService;
     private final ITokenService tokenService;
+    private final IActiveUserTrackingService activeUserTrackingService;
     private final LoginAttemptService loginAttemptService;
 
     public AuthController(
         IAuthenticationService authenticationService,
         IUserManagementService userManagementService,
         ITokenService tokenService,
+        IActiveUserTrackingService activeUserTrackingService,
         LoginAttemptService loginAttemptService
     ) {
         this.authenticationService = authenticationService;
         this.userManagementService = userManagementService;
         this.tokenService = tokenService;
+        this.activeUserTrackingService = activeUserTrackingService;
         this.loginAttemptService = loginAttemptService;
     }
 
@@ -132,6 +136,9 @@ public class AuthController {
 
             // Bước 5: Reset login attempts khi login thành công
             loginAttemptService.loginSucceeded(username);
+
+            // Đánh dấu user đang hoạt động để phục vụ thống kê traffic realtime
+            activeUserTrackingService.markUserAsActive(username);
 
             // Bước 6: Tạo response với token, user info và message
             LoginUserDto safeUser = new LoginUserDto(

@@ -94,6 +94,7 @@ public class SecurityConfig {
                 // Protected endpoints - cần authentication
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/reports/**").hasRole("ADMIN")
+                .requestMatchers("/api/traffic/**").hasAnyRole("CUSTOMER", "EMPLOYEE", "ADMIN")
                 .requestMatchers("/api/orders/**").hasAnyRole("CUSTOMER", "ADMIN")
                 
                 .anyRequest().authenticated()  // Các endpoint khác yêu cầu xác thực
