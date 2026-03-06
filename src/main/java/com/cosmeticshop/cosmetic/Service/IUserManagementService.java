@@ -35,7 +35,27 @@ public interface IUserManagementService {
     /**
      * Lấy danh sách tất cả users
      */
-    List<User> getAllUsers();
+    List<UserListItemResponse> getAllUsers();
+
+    /**
+     * Lấy thông tin hiển thị của user theo ID
+     */
+    UserListItemResponse getUserSummaryById(Long id);
+
+    /**
+     * Cập nhật vai trò user
+     */
+    UserListItemResponse updateUserRole(Long id, User.Role role);
+
+    /**
+     * Cập nhật trạng thái khóa/mở khóa user
+     */
+    UserListItemResponse updateUserLockStatus(Long id, boolean accountLocked);
+
+    /**
+     * Cập nhật status tài khoản (ACTIVE/POLICY_VIOLATION/FRAUD_SUSPECTED/...)
+     */
+    UserListItemResponse updateUserStatus(Long id, User.Status status, String reason);
     
     /**
      * Lấy user theo ID

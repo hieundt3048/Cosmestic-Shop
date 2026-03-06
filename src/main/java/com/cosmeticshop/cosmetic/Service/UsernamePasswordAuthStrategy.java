@@ -35,6 +35,11 @@ public class UsernamePasswordAuthStrategy implements AuthenticationStrategy {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
         }
+
+        User.Status status = user.getStatus() == null ? User.Status.ACTIVE : user.getStatus();
+        if (status != User.Status.ACTIVE) {
+            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa: " + status.name());
+        }
         
         return user;
     }

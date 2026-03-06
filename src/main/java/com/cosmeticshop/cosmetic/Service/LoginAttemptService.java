@@ -24,6 +24,7 @@ public class LoginAttemptService {
 
     // Lưu trữ login attempts: username -> LoginAttempt
     private final ConcurrentHashMap<String, LoginAttempt> attemptsCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Boolean> manualLockCache = new ConcurrentHashMap<>();
 
     /**
      * Inner class để lưu thông tin login attempt
@@ -78,6 +79,10 @@ public class LoginAttemptService {
      * Kiểm tra username có bị block không
      */
     public boolean isBlocked(String username) {
+        if (Boolean.TRUE.equals(manualLockCache.get(username))) {
+            return true;
+        }
+
         LoginAttempt attempt = attemptsCache.get(username);
         if (attempt == null) {
             return false;
@@ -135,6 +140,10 @@ public class LoginAttemptService {
      * Lấy thời gian còn lại của block (phút)
      */
     public long getBlockedMinutesRemaining(String username) {
+        if (Boolean.TRUE.equals(manualLockCache.get(username))) {
+            return -1;
+        }
+
         LoginAttempt attempt = attemptsCache.get(username);
         if (attempt == null || !attempt.isBlocked()) {
             return 0;
@@ -143,11 +152,17 @@ public class LoginAttemptService {
         return java.time.Duration.between(now, attempt.getBlockedUntil()).toMinutes();
     }
 
+    public void lockUser(String username) {
+        manualLockCache.put(username, true);
+        logger.info("User '{}' has been manually locked", username);
+    }
+
     /**
      * Manual unblock user (cho admin)
      */
     public void unblock(String username) {
         attemptsCache.remove(username);
+        manualLockCache.remove(username);
         logger.info("User '{}' has been manually unblocked", username);
     }
 }

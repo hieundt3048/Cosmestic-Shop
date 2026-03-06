@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,9 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.UpdateUserLockRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.UpdateUserRoleRequest;
+import com.cosmeticshop.cosmetic.Dto.UpdateUserStatusRequest;
 import com.cosmeticshop.cosmetic.Dto.UserListItemResponse;
-import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Service.IUserManagementService;
 
 import jakarta.validation.Valid;
@@ -42,9 +45,9 @@ public class UserController {
      * GET /api/users
      */
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserListItemResponse>> getAllUsers() {
         logger.info("Fetching all users");
-        List<User> users = userManagementService.getAllUsers();
+        List<UserListItemResponse> users = userManagementService.getAllUsers();
         return ResponseEntity.ok(users);
     }
 
@@ -83,10 +86,9 @@ public class UserController {
      * GET /api/users/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserListItemResponse> getUserById(@PathVariable Long id) {
         logger.info("Fetching user with ID: {}", id);
-        User user = userManagementService.getUserById(id);
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(userManagementService.getUserSummaryById(id));
     }
     
     /**
@@ -103,9 +105,33 @@ public class UserController {
     /**
      * Chỉnh sửa thông tin User
      */
-    @PutMapping("/update")
+    @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request){
         logger.info("Update user with ID: {}", id);
         return ResponseEntity.ok(userManagementService.updateUser(id, request));
+    }
+
+    @PatchMapping("/{id}/role")
+    public ResponseEntity<UserListItemResponse> updateUserRole(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRoleRequest request) {
+        logger.info("Updating role for user ID: {} to {}", id, request.getRole());
+        return ResponseEntity.ok(userManagementService.updateUserRole(id, request.getRole()));
+    }
+
+    @PatchMapping("/{id}/lock")
+    public ResponseEntity<UserListItemResponse> updateUserLockStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserLockRequest request) {
+        logger.info("Updating lock status for user ID: {} to {}", id, request.getAccountLocked());
+        return ResponseEntity.ok(userManagementService.updateUserLockStatus(id, request.getAccountLocked()));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<UserListItemResponse> updateUserStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserStatusRequest request) {
+        logger.info("Updating status for user ID: {} to {}", id, request.getStatus());
+        return ResponseEntity.ok(userManagementService.updateUserStatus(id, request.getStatus(), request.getReason()));
     }
 }

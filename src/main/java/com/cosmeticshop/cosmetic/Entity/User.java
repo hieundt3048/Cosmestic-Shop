@@ -1,5 +1,6 @@
 package com.cosmeticshop.cosmetic.Entity;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -47,6 +48,19 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", columnDefinition = "NVARCHAR(50)")
+    private Status status;
+
+    @Column(name = "status_reason", columnDefinition = "NVARCHAR(500)")
+    private String statusReason;
+
+    @Column(name = "status_updated_at")
+    private LocalDateTime statusUpdatedAt;
+
+    @Column(name = "status_updated_by", columnDefinition = "NVARCHAR(255)")
+    private String statusUpdatedBy;
+
     public List<Order> getOrders() {
         return orders;
     }
@@ -59,6 +73,13 @@ public class User {
         ADMIN,
         EMPLOYEE,
         CUSTOMER
+    }
+
+    public enum Status {
+        ACTIVE,
+        LOCKED_MANUAL,
+        POLICY_VIOLATION,
+        FRAUD_SUSPECTED
     }
 
     // Getters and Setters
@@ -104,5 +125,29 @@ public class User {
     }
     public void setRole(Role role) {
         this.role = role;
+    }
+    public Status getStatus() {
+        return status;
+    }
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+    public String getStatusReason() {
+        return statusReason;
+    }
+    public void setStatusReason(String statusReason) {
+        this.statusReason = statusReason;
+    }
+    public LocalDateTime getStatusUpdatedAt() {
+        return statusUpdatedAt;
+    }
+    public void setStatusUpdatedAt(LocalDateTime statusUpdatedAt) {
+        this.statusUpdatedAt = statusUpdatedAt;
+    }
+    public String getStatusUpdatedBy() {
+        return statusUpdatedBy;
+    }
+    public void setStatusUpdatedBy(String statusUpdatedBy) {
+        this.statusUpdatedBy = statusUpdatedBy;
     }
 }

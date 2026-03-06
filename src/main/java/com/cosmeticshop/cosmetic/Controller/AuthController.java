@@ -120,6 +120,14 @@ public class AuthController {
             long blockedMinutes = loginAttemptService.getBlockedMinutesRemaining(username);
             logger.warn("Login attempt from blocked user '{}'. Blocked for {} more minutes", 
                        username, blockedMinutes);
+
+            if (blockedMinutes < 0) {
+                throw new TooManyRequestsException(
+                    "Tài khoản đã bị khóa bởi quản trị viên. Vui lòng liên hệ quản trị viên để được hỗ trợ.",
+                    0
+                );
+            }
+
             throw new TooManyRequestsException(
                 String.format("Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần. Vui lòng thử lại sau %d phút.", 
                              blockedMinutes),
