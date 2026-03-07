@@ -43,4 +43,14 @@ public class BrandService {
 
         brandRepository.delete(brand);
     }
+
+    public Brand updateBrandById(Long id, CreateBrandRequest request) {
+        Brand brand = brandRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Brand không tồn tại với ID: " + id));
+
+        brand.setName(request.getName());
+        brand.setOrigin(request.getOrigin());
+
+        return brandRepository.save(brand);
+    }
 }

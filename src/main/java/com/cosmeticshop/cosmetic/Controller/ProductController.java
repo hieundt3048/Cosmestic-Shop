@@ -1,18 +1,23 @@
 package com.cosmeticshop.cosmetic.Controller;
+
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cosmeticshop.cosmetic.Dto.CreateProductRequest;
+import com.cosmeticshop.cosmetic.Dto.InventorySummaryResponse;
 import com.cosmeticshop.cosmetic.Dto.ProductResponse;
+import com.cosmeticshop.cosmetic.Dto.UpdateProductRequest;
 import com.cosmeticshop.cosmetic.Service.ProductService;
-
 
 @RestController
 @RequestMapping("/api/products")
@@ -23,28 +28,55 @@ public class ProductController {
     public ProductController(ProductService productService) {
         this.productService = productService;
     }
-    //tạo sản phẩm mới
+
+    // Tạo sản phẩm mới (giữ endpoint cũ để tương thích FE hiện tại)
     @PostMapping("/create_product")
-    public ProductResponse createProduct(@RequestBody CreateProductRequest request){
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProductResponse createProduct(@RequestBody CreateProductRequest request) {
+        return productService.createProduct(request);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProductResponse createProductRestful(@RequestBody CreateProductRequest request) {
         return productService.createProduct(request);
     }
     
-    //Lấy tất cả sản phẩm
+    // Lấy tất cả sản phẩm
     @GetMapping
-    public List<ProductResponse> getAllProduct(){
+    public List<ProductResponse> getAllProduct() {
         return productService.getAllProducts();
     }
 
-    //lấy sản phẩm theo id
+    // Lấy sản phẩm theo id
     @GetMapping("/{id}")
-    public ProductResponse getProductbyId(@PathVariable Long id){
+    public ProductResponse getProductbyId(@PathVariable Long id) {
 
         return productService.getProductById(id);
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProductResponse updateProduct(@PathVariable Long id, @RequestBody UpdateProductRequest request) {
+        return productService.updateProduct(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+    }
+
+    @GetMapping("/inventory/summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public InventorySummaryResponse getInventorySummary(
+            @RequestParam(defaultValue = "10") Integer lowStockThreshold) {
+        return productService.getInventorySummary(lowStockThreshold);
+    }
     
-    //tìm kiếm sản phẩm
+    // Tìm kiếm sản phẩm
     @GetMapping("/search")
-    public String searchMethod(@RequestParam String query){
+    public String searchMethod(@RequestParam String query) {
         return query;
     }
     

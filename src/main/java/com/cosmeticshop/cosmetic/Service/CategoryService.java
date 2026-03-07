@@ -42,4 +42,12 @@ public class CategoryService {
 
         categoryRepository.delete(category);
     }
+
+    public Category updateCategory(Long id, CreateCategoryRequest request) {
+        Category category = categoryRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Category không tồn tại với ID: " + id));
+
+        category.setName(request.getName());
+        return categoryRepository.save(category);
+    }
 }
