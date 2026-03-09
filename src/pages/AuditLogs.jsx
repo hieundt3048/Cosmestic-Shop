@@ -1,30 +1,44 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldAlert, Search } from 'lucide-react';
-
-const mockLogs = [
-  { id: 1, actor: 'admin', role: 'ADMIN', action: 'CREATE_EMPLOYEE', target: 'employee.kthanh', at: '2026-03-03T08:05:00Z' },
-  { id: 2, actor: 'admin', role: 'ADMIN', action: 'UPDATE_ROLE', target: 'customer.anhthu', at: '2026-03-03T08:19:00Z' },
-  { id: 3, actor: 'employee.hoa', role: 'EMPLOYEE', action: 'UPDATE_ORDER_STATUS', target: 'order#1241', at: '2026-03-03T08:36:00Z' },
-  { id: 4, actor: 'admin', role: 'ADMIN', action: 'LOCK_USER', target: 'customer.nghi', at: '2026-03-03T08:44:00Z' },
-  { id: 5, actor: 'employee.minh', role: 'EMPLOYEE', action: 'UPDATE_INVENTORY', target: 'product#89', at: '2026-03-03T09:11:00Z' },
-];
+import { auditAPI } from '../api/auditApi';
 
 const AuditLogs = () => {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [logsData, setLogsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadLogs = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await auditAPI.getAuditLogs();
+        setLogsData(data || []);
+      } catch (err) {
+        setError(err?.response?.data?.message || 'Không thể tải audit logs.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLogs();
+  }, []);
 
   const logs = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return mockLogs.filter((log) => {
+    return logsData.filter((log) => {
       const matchesText =
         !q ||
-        log.actor.toLowerCase().includes(q) ||
-        log.action.toLowerCase().includes(q) ||
-        log.target.toLowerCase().includes(q);
+        log.actor?.toLowerCase().includes(q) ||
+        log.action?.toLowerCase().includes(q) ||
+        log.target?.toLowerCase().includes(q) ||
+        log.details?.toLowerCase().includes(q);
       const matchesRole = roleFilter === 'ALL' || log.role === roleFilter;
       return matchesText && matchesRole;
     });
-  }, [query, roleFilter]);
+  }, [logsData, query, roleFilter]);
 
   return (
     <div>
@@ -56,7 +70,11 @@ const AuditLogs = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {logs.length === 0 ? (
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>
+        ) : error ? (
+          <div className="p-8 text-center text-red-600">{error}</div>
+        ) : logs.length === 0 ? (
           <div className="p-8 text-center text-gray-500">Không có bản ghi phù hợp.</div>
         ) : (
           <div className="overflow-x-auto">
@@ -67,6 +85,7 @@ const AuditLogs = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người thao tác</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đối tượng</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chi tiết</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -81,6 +100,7 @@ const AuditLogs = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">{log.action}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">{log.target}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">{log.details || '-'}</td>
                   </tr>
                 ))}
               </tbody>

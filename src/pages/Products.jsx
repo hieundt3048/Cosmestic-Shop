@@ -8,6 +8,7 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   useEffect(() => {
     loadProducts();
@@ -31,12 +32,59 @@ const Products = () => {
     if (!window.confirm('Bạn có chắc muốn xóa sản phẩm này?')) return;
     
     try {
-      // Assuming delete API exists
-      // await productAPI.deleteProduct(id);
-      setProducts(products.filter(p => p.id !== id));
+      setActionLoadingId(id);
+      await productAPI.deleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
       alert('Xóa sản phẩm thành công!');
     } catch (err) {
       alert('Không thể xóa sản phẩm');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleEdit = async (product) => {
+    const currentName = product.productName || product.name || '';
+    const newName = window.prompt('Tên sản phẩm mới:', currentName);
+    if (newName === null) return;
+
+    const newPriceInput = window.prompt('Giá mới:', String(product.price ?? '0'));
+    if (newPriceInput === null) return;
+
+    const newStockInput = window.prompt('Tồn kho mới:', String(product.stockQuantity ?? '0'));
+    if (newStockInput === null) return;
+
+    const parsedPrice = Number(newPriceInput);
+    const parsedStock = Number(newStockInput);
+
+    if (!newName.trim() || Number.isNaN(parsedPrice) || parsedPrice <= 0 || Number.isNaN(parsedStock) || parsedStock < 0) {
+      alert('Dữ liệu không hợp lệ. Vui lòng kiểm tra lại tên, giá và tồn kho.');
+      return;
+    }
+
+    if (!product.brand?.id || !product.category?.id) {
+      alert('Sản phẩm thiếu brand/category nên không thể cập nhật.');
+      return;
+    }
+
+    try {
+      setActionLoadingId(product.id);
+      const updated = await productAPI.updateProduct(product.id, {
+        name: newName.trim(),
+        price: parsedPrice,
+        description: product.description || '',
+        imageUrl: product.imageUrl || 'https://via.placeholder.com/300',
+        stockQuantity: parsedStock,
+        brandId: product.brand.id,
+        categoryId: product.category.id,
+      });
+
+      setProducts((prev) => prev.map((item) => (item.id === product.id ? updated : item)));
+      alert('Cập nhật sản phẩm thành công!');
+    } catch (err) {
+      alert('Không thể cập nhật sản phẩm');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -157,6 +205,8 @@ const Products = () => {
                     </td>
                     <td className="px-6 py-4 text-right text-sm space-x-2">
                       <button
+                        onClick={() => handleEdit(product)}
+                        disabled={actionLoadingId === product.id}
                         className="text-blue-600 hover:text-blue-900 inline-flex items-center"
                         title="Chỉnh sửa"
                       >
@@ -164,6 +214,7 @@ const Products = () => {
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
+                        disabled={actionLoadingId === product.id}
                         className="text-red-600 hover:text-red-900 inline-flex items-center"
                         title="Xóa"
                       >

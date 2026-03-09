@@ -2,10 +2,28 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Category APIs
 export const getAllCategories = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/categories`);
+    const response = await api.get('/categories');
     return response.data;
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -15,7 +33,7 @@ export const getAllCategories = async () => {
 
 export const getCategoryById = async (id) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/categories/${id}`);
+    const response = await api.get(`/categories/${id}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching category:', error);
@@ -25,7 +43,7 @@ export const getCategoryById = async (id) => {
 
 export const createCategory = async (categoryData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/categories`, categoryData);
+    const response = await api.post('/categories', categoryData);
     return response.data;
   } catch (error) {
     console.error('Error creating category:', error);
@@ -35,7 +53,7 @@ export const createCategory = async (categoryData) => {
 
 export const updateCategory = async (id, categoryData) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/categories/${id}`, categoryData);
+    const response = await api.put(`/categories/${id}`, categoryData);
     return response.data;
   } catch (error) {
     console.error('Error updating category:', error);
@@ -45,7 +63,7 @@ export const updateCategory = async (id, categoryData) => {
 
 export const deleteCategory = async (id) => {
   try {
-    await axios.delete(`${API_BASE_URL}/categories/${id}`);
+    await api.delete(`/categories/${id}`);
   } catch (error) {
     console.error('Error deleting category:', error);
     throw error;

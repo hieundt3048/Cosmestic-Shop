@@ -41,6 +41,11 @@ export const reportAPI = {
     return response.data;
   },
 
+  getFinancialReport: async (range = 'month') => {
+    const response = await api.get('/reports/financial', { params: { range } });
+    return response.data;
+  },
+
   pingActivity: async () => {
     const response = await api.post('/traffic/ping');
     return response.data;

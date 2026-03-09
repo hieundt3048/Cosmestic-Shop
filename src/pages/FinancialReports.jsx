@@ -1,16 +1,34 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Download, FileBarChart2 } from 'lucide-react';
-
-const monthlyData = [
-  { month: '01/2026', revenue: 520000000, shipping: 38000000, tax: 52000000, netProfit: 138000000 },
-  { month: '02/2026', revenue: 560000000, shipping: 41000000, tax: 56000000, netProfit: 151000000 },
-  { month: '03/2026', revenue: 610000000, shipping: 44000000, tax: 61000000, netProfit: 167000000 },
-];
+import { reportAPI } from '../api/reportApi';
 
 const FinancialReports = () => {
+  const [range, setRange] = useState('month');
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadFinancialReport = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await reportAPI.getFinancialReport(range);
+        setRows(data?.points || []);
+      } catch (err) {
+        setRows([]);
+        setError('Không thể tải báo cáo tài chính từ hệ thống.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFinancialReport();
+  }, [range]);
+
   const totals = useMemo(
     () =>
-      monthlyData.reduce(
+      rows.reduce(
         (acc, item) => {
           acc.revenue += item.revenue;
           acc.shipping += item.shipping;
@@ -20,15 +38,15 @@ const FinancialReports = () => {
         },
         { revenue: 0, shipping: 0, tax: 0, netProfit: 0 }
       ),
-    []
+    [rows]
   );
 
   const exportCsv = () => {
-    const rows = [
+    const csvRows = [
       ['Thang', 'Doanh thu', 'Chi phi van chuyen', 'Thue', 'Loi nhuan rong'],
-      ...monthlyData.map((item) => [item.month, item.revenue, item.shipping, item.tax, item.netProfit]),
+      ...rows.map((item) => [item.label, item.revenue, item.shipping, item.tax, item.netProfit]),
     ];
-    const content = rows.map((row) => row.join(',')).join('\n');
+    const content = csvRows.map((row) => row.join(',')).join('\n');
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -45,14 +63,32 @@ const FinancialReports = () => {
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">Báo cáo tài chính</h1>
           <p className="text-gray-600">Theo dõi thuế, chi phí vận chuyển và lợi nhuận ròng.</p>
         </div>
-        <button
-          onClick={exportCsv}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
-        >
-          <Download size={16} />
-          Xuất CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg"
+          >
+            <option value="day">Theo ngày</option>
+            <option value="week">Theo tuần</option>
+            <option value="month">Theo tháng</option>
+            <option value="year">Theo năm</option>
+          </select>
+          <button
+            onClick={exportCsv}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+          >
+            <Download size={16} />
+            Xuất CSV
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm p-4">
@@ -77,7 +113,7 @@ const FinancialReports = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 inline-flex items-center gap-2">
             <FileBarChart2 size={18} />
-            Chi tiết theo tháng
+            Chi tiết theo kỳ
           </h2>
         </div>
         <div className="overflow-x-auto">
@@ -92,15 +128,20 @@ const FinancialReports = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {monthlyData.map((item) => (
-                <tr key={item.month} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.month}</td>
+              {rows.map((item) => (
+                <tr key={item.label} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.label}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{item.revenue.toLocaleString('vi-VN')}đ</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{item.tax.toLocaleString('vi-VN')}đ</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{item.shipping.toLocaleString('vi-VN')}đ</td>
                   <td className="px-6 py-4 text-sm font-medium text-emerald-700">{item.netProfit.toLocaleString('vi-VN')}đ</td>
                 </tr>
               ))}
+              {!loading && rows.length === 0 && (
+                <tr>
+                  <td className="px-6 py-5 text-sm text-gray-500" colSpan={5}>Chưa có dữ liệu tài chính trong kỳ đã chọn.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

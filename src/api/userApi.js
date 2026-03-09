@@ -50,6 +50,21 @@ export const userAPI = {
     const response = await api.delete(`/users/${id}`);
     return response.data;
   },
+
+  updateUserRole: async (id, role) => {
+    const response = await api.patch(`/users/${id}/role`, { role });
+    return response.data;
+  },
+
+  updateUserLockStatus: async (id, accountLocked) => {
+    const response = await api.patch(`/users/${id}/lock`, { accountLocked });
+    return response.data;
+  },
+
+  updateUserStatus: async (id, status, reason) => {
+    const response = await api.patch(`/users/${id}/status`, { status, reason });
+    return response.data;
+  },
 };
 
 export default api;

@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, Search, Lock, Unlock, UserCog, ClipboardList } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { userAPI } from '../api/userApi';
+
+const STATUS_LABELS = {
+  ACTIVE: 'Hoạt động',
+  LOCKED_MANUAL: 'Khóa thủ công',
+  POLICY_VIOLATION: 'Vi phạm chính sách',
+  FRAUD_SUSPECTED: 'Nghi ngờ gian lận',
+  TEMP_LOCKED: 'Tạm khóa',
+};
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -8,10 +17,24 @@ const UserManagement = () => {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [error, setError] = useState('');
+  const [savingUserIds, setSavingUserIds] = useState([]);
+
+  const setSaving = (userId, isSaving) => {
+    setSavingUserIds((prev) => {
+      if (isSaving) {
+        return prev.includes(userId) ? prev : [...prev, userId];
+      }
+      return prev.filter((id) => id !== userId);
+    });
+  };
+
+  const isSavingUser = (userId) => savingUserIds.includes(userId);
 
   useEffect(() => {
     const loadUsers = async () => {
       try {
+        setError('');
         setLoading(true);
         const data = await userAPI.getAllUsers();
         const normalized = (data || []).map((item) => ({
@@ -19,6 +42,8 @@ const UserManagement = () => {
           accountLocked: !!item.accountLocked,
         }));
         setUsers(normalized);
+      } catch (err) {
+        setError(err?.response?.data?.message || 'Không thể tải danh sách tài khoản. Vui lòng thử lại.');
       } finally {
         setLoading(false);
       }
@@ -38,19 +63,75 @@ const UserManagement = () => {
       const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
       const matchesStatus =
         statusFilter === 'ALL' ||
-        (statusFilter === 'ACTIVE' && !user.accountLocked) ||
-        (statusFilter === 'LOCKED' && user.accountLocked);
+        (statusFilter === 'ACTIVE' && user.status === 'ACTIVE' && !user.accountLocked) ||
+        (statusFilter === 'LOCKED' && user.accountLocked) ||
+        user.status === statusFilter;
 
       return matchesText && matchesRole && matchesStatus;
     });
   }, [users, query, roleFilter, statusFilter]);
 
-  const updateRole = (userId, role) => {
-    setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, role } : item)));
+  const updateRole = async (userId, role) => {
+    const previous = users.find((item) => item.id === userId)?.role;
+    if (!previous || previous === role) return;
+
+    try {
+      setError('');
+      setSaving(userId, true);
+      const updatedUser = await userAPI.updateUserRole(userId, role);
+      setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, ...updatedUser } : item)));
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Cập nhật vai trò thất bại.');
+      setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, role: previous } : item)));
+    } finally {
+      setSaving(userId, false);
+    }
   };
 
-  const toggleLock = (userId) => {
-    setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, accountLocked: !item.accountLocked } : item)));
+  const toggleLock = async (userId) => {
+    const currentUser = users.find((item) => item.id === userId);
+    if (!currentUser) return;
+
+    const nextLockStatus = !currentUser.accountLocked;
+    try {
+      setError('');
+      setSaving(userId, true);
+      const updatedUser = await userAPI.updateUserLockStatus(userId, nextLockStatus);
+      setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, ...updatedUser } : item)));
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Cập nhật trạng thái tài khoản thất bại.');
+    } finally {
+      setSaving(userId, false);
+    }
+  };
+
+  const updateStatus = async (userId, nextStatus) => {
+    const currentUser = users.find((item) => item.id === userId);
+    if (!currentUser || currentUser.status === nextStatus) return;
+
+    let reason = currentUser.statusReason || '';
+    if (nextStatus !== 'ACTIVE') {
+      const prompted = window.prompt('Nhập lý do cập nhật trạng thái tài khoản:', reason);
+      if (prompted === null) {
+        return;
+      }
+      reason = prompted.trim();
+      if (!reason) {
+        setError('Vui lòng nhập lý do khi vô hiệu hóa tài khoản.');
+        return;
+      }
+    }
+
+    try {
+      setError('');
+      setSaving(userId, true);
+      const updatedUser = await userAPI.updateUserStatus(userId, nextStatus, reason || null);
+      setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, ...updatedUser } : item)));
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Cập nhật status thất bại.');
+    } finally {
+      setSaving(userId, false);
+    }
   };
 
   return (
@@ -59,6 +140,12 @@ const UserManagement = () => {
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Quản lý người dùng</h1>
         <p className="text-gray-600">Phân quyền tài khoản, khóa/mở khóa và theo dõi trạng thái hoạt động.</p>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
@@ -114,6 +201,10 @@ const UserManagement = () => {
           <option value="ALL">Tất cả trạng thái</option>
           <option value="ACTIVE">Đang hoạt động</option>
           <option value="LOCKED">Đang khóa</option>
+          <option value="LOCKED_MANUAL">Khóa thủ công</option>
+          <option value="POLICY_VIOLATION">Vi phạm chính sách</option>
+          <option value="FRAUD_SUSPECTED">Nghi ngờ gian lận</option>
+          <option value="TEMP_LOCKED">Tạm khóa</option>
         </select>
       </div>
 
@@ -149,6 +240,7 @@ const UserManagement = () => {
                       <select
                         value={user.role}
                         onChange={(e) => updateRole(user.id, e.target.value)}
+                        disabled={isSavingUser(user.id)}
                         className="px-2 py-1 border border-gray-300 rounded-md text-sm"
                       >
                         <option value="ADMIN">ADMIN</option>
@@ -157,22 +249,39 @@ const UserManagement = () => {
                       </select>
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          user.accountLocked ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
-                        }`}
-                      >
-                        {user.accountLocked ? 'Đang khóa' : 'Hoạt động'}
-                      </span>
+                      <div className="space-y-2">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                            user.accountLocked ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          {STATUS_LABELS[user.status] || user.status || (user.accountLocked ? 'Đang khóa' : 'Hoạt động')}
+                        </span>
+                        <select
+                          value={user.status || (user.accountLocked ? 'LOCKED_MANUAL' : 'ACTIVE')}
+                          onChange={(e) => updateStatus(user.id, e.target.value)}
+                          disabled={isSavingUser(user.id)}
+                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                        >
+                          <option value="ACTIVE">Hoạt động</option>
+                          <option value="LOCKED_MANUAL">Khóa thủ công</option>
+                          <option value="POLICY_VIOLATION">Vi phạm chính sách</option>
+                          <option value="FRAUD_SUSPECTED">Nghi ngờ gian lận</option>
+                        </select>
+                        {user.statusReason && (
+                          <p className="text-xs text-gray-500">Lý do: {user.statusReason}</p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => toggleLock(user.id)}
+                        disabled={isSavingUser(user.id)}
                         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${
                           user.accountLocked
                             ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                             : 'bg-red-50 text-red-700 hover:bg-red-100'
-                        }`}
+                        } ${isSavingUser(user.id) ? 'opacity-60 cursor-not-allowed' : ''}`}
                       >
                         {user.accountLocked ? <Unlock size={14} /> : <Lock size={14} />}
                         {user.accountLocked ? 'Mở khóa' : 'Khóa'}

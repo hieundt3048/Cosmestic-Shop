@@ -2,10 +2,28 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Brand APIs
 export const getAllBrands = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/brands`);
+    const response = await api.get('/brands');
     return response.data;
   } catch (error) {
     console.error('Error fetching brands:', error);
@@ -15,7 +33,7 @@ export const getAllBrands = async () => {
 
 export const getBrandById = async (id) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/brands/${id}`);
+    const response = await api.get(`/brands/${id}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching brand:', error);
@@ -25,7 +43,7 @@ export const getBrandById = async (id) => {
 
 export const createBrand = async (brandData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/brands`, brandData);
+    const response = await api.post('/brands', brandData);
     return response.data;
   } catch (error) {
     console.error('Error creating brand:', error);
@@ -35,7 +53,7 @@ export const createBrand = async (brandData) => {
 
 export const updateBrand = async (id, brandData) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/brands/${id}`, brandData);
+    const response = await api.put(`/brands/${id}`, brandData);
     return response.data;
   } catch (error) {
     console.error('Error updating brand:', error);
@@ -45,7 +63,7 @@ export const updateBrand = async (id, brandData) => {
 
 export const deleteBrand = async (id) => {
   try {
-    await axios.delete(`${API_BASE_URL}/brands/${id}`);
+    await api.delete(`/brands/${id}`);
   } catch (error) {
     console.error('Error deleting brand:', error);
     throw error;
