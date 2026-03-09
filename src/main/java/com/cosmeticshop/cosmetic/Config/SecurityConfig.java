@@ -10,11 +10,14 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
+
+import com.cosmeticshop.cosmetic.Service.RuntimeSecuritySettingsService;
 
 /**
  * SecurityConfig - Cấu hình bảo mật cho ứng dụng
@@ -35,19 +38,50 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final RuntimeSecuritySettingsService runtimeSecuritySettingsService;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthFilter, 
             UserDetailsService userDetailsService,
-            CorsConfigurationSource corsConfigurationSource) {
+            CorsConfigurationSource corsConfigurationSource,
+            RuntimeSecuritySettingsService runtimeSecuritySettingsService) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
         this.corsConfigurationSource = corsConfigurationSource;
+        this.runtimeSecuritySettingsService = runtimeSecuritySettingsService;
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
+        return new PasswordEncoder() {
+            @Override
+            public String encode(CharSequence rawPassword) {
+                int rounds = runtimeSecuritySettingsService.getBcryptRounds();
+                return new BCryptPasswordEncoder(rounds).encode(rawPassword);
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                if (rawPassword == null || encodedPassword == null || encodedPassword.isBlank()) {
+                    return false;
+                }
+                return BCrypt.checkpw(rawPassword.toString(), encodedPassword);
+            }
+
+            @Override
+            public boolean upgradeEncoding(String encodedPassword) {
+                if (encodedPassword == null || encodedPassword.length() < 7) {
+                    return true;
+                }
+
+                try {
+                    int currentRounds = Integer.parseInt(encodedPassword.substring(4, 6));
+                    return currentRounds < runtimeSecuritySettingsService.getBcryptRounds();
+                } catch (NumberFormatException ex) {
+                    return true;
+                }
+            }
+        };
     }
 
     /**
@@ -95,6 +129,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/reports/**").hasRole("ADMIN")
                 .requestMatchers("/api/audit-logs/**").hasRole("ADMIN")
+                .requestMatchers("/api/system-settings/**").hasRole("ADMIN")
                 .requestMatchers("/api/traffic/**").hasAnyRole("CUSTOMER", "EMPLOYEE", "ADMIN")
                 .requestMatchers("/api/orders/**").hasAnyRole("CUSTOMER", "ADMIN")
                 

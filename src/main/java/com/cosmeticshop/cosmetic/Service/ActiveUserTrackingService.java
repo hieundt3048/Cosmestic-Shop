@@ -19,11 +19,13 @@ import com.cosmeticshop.cosmetic.Dto.ActiveUserTrafficResponse;
  */
 public class ActiveUserTrackingService implements IActiveUserTrackingService {
 
-    // Khoảng thời gian để xác định user còn hoạt động (đơn vị: phút)
-    private static final int ACTIVE_WINDOW_MINUTES = 5;
-
     // Map lưu thời điểm hoạt động gần nhất theo username
     private final Map<String, LocalDateTime> lastSeenByUser = new ConcurrentHashMap<>();
+    private final RuntimeSecuritySettingsService runtimeSecuritySettingsService;
+
+    public ActiveUserTrackingService(RuntimeSecuritySettingsService runtimeSecuritySettingsService) {
+        this.runtimeSecuritySettingsService = runtimeSecuritySettingsService;
+    }
 
     @Override
     /**
@@ -49,7 +51,8 @@ public class ActiveUserTrackingService implements IActiveUserTrackingService {
     public ActiveUserTrafficResponse getActiveUserTraffic() {
         // Dọn dữ liệu hết hạn trước khi tính toán
         clearInactiveUsers();
-        LocalDateTime activeThreshold = LocalDateTime.now().minusMinutes(ACTIVE_WINDOW_MINUTES);
+        int activeWindowMinutes = runtimeSecuritySettingsService.getSessionTimeoutMinutes();
+        LocalDateTime activeThreshold = LocalDateTime.now().minusMinutes(activeWindowMinutes);
 
         // Đếm số user có lastSeen >= activeThreshold
         int activeUsers = (int) lastSeenByUser.values().stream()
@@ -60,7 +63,7 @@ public class ActiveUserTrackingService implements IActiveUserTrackingService {
         return new ActiveUserTrafficResponse(
                 activeUsers,
                 lastSeenByUser.size(),
-                ACTIVE_WINDOW_MINUTES,
+                activeWindowMinutes,
                 LocalDateTime.now());
     }
 
@@ -68,7 +71,7 @@ public class ActiveUserTrackingService implements IActiveUserTrackingService {
      * Xóa các user đã không còn hoạt động trong cửa sổ ACTIVE_WINDOW_MINUTES.
      */
     private void clearInactiveUsers() {
-        LocalDateTime activeThreshold = LocalDateTime.now().minusMinutes(ACTIVE_WINDOW_MINUTES);
+        LocalDateTime activeThreshold = LocalDateTime.now().minusMinutes(runtimeSecuritySettingsService.getSessionTimeoutMinutes());
         lastSeenByUser.entrySet().removeIf(entry -> entry.getValue().isBefore(activeThreshold));
     }
 }

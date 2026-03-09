@@ -40,7 +40,8 @@ public class Order {
         CONFIRMED,
         SHIPPED,
         DELIVERED,
-        CANCELED
+        CANCELED,
+        REFUNDED
     }
     
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)

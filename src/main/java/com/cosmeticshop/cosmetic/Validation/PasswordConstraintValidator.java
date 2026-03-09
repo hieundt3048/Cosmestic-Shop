@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.springframework.stereotype.Component;
+
+import com.cosmeticshop.cosmetic.Service.RuntimeSecuritySettingsService;
+
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
@@ -17,7 +21,14 @@ import jakarta.validation.ConstraintValidatorContext;
  * 4. Chứa ít nhất 1 số
  * 5. Chứa ít nhất 1 ký tự đặc biệt
  */
+@Component
 public class PasswordConstraintValidator implements ConstraintValidator<ValidPassword, String> {
+
+    private final RuntimeSecuritySettingsService runtimeSecuritySettingsService;
+
+    public PasswordConstraintValidator(RuntimeSecuritySettingsService runtimeSecuritySettingsService) {
+        this.runtimeSecuritySettingsService = runtimeSecuritySettingsService;
+    }
 
     // Regex patterns
     private static final Pattern LOWERCASE_PATTERN = Pattern.compile("[a-z]");
@@ -25,8 +36,6 @@ public class PasswordConstraintValidator implements ConstraintValidator<ValidPas
     private static final Pattern DIGIT_PATTERN = Pattern.compile("[0-9]");
     private static final Pattern SPECIAL_CHAR_PATTERN = Pattern.compile("[@$!%*?&]");
     
-    private static final int MIN_LENGTH = 8;
-
     @Override
     public void initialize(ValidPassword constraintAnnotation) {
     }
@@ -39,9 +48,10 @@ public class PasswordConstraintValidator implements ConstraintValidator<ValidPas
         }
 
         List<String> violations = new ArrayList<>();
+        int minLength = runtimeSecuritySettingsService.getMinPasswordLength();
 
-        if (password.length() < MIN_LENGTH) {
-            violations.add(String.format("Mật khẩu phải có ít nhất %d ký tự", MIN_LENGTH));
+        if (password.length() < minLength) {
+            violations.add(String.format("Mật khẩu phải có ít nhất %d ký tự", minLength));
         }
 
         if (!LOWERCASE_PATTERN.matcher(password).find()) {

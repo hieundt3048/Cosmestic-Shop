@@ -97,7 +97,7 @@ public class UserManagementService implements IUserManagementService {
 
     /**
      * Cập nhật thông tin cơ bản của user theo ID.
-     * Lưu ý: method này đang set trực tiếp password từ request.
+        * Nếu request có password mới thì sẽ mã hóa trước khi lưu.
      */
     @Override
     public User updateUser(Long id, UpdateUserRequest request){
@@ -112,7 +112,9 @@ public class UserManagementService implements IUserManagementService {
         
         user.setUsername(request.getUsername());
         user.setFullName(request.getFullName());
-        user.setPassword(request.getPassword());
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
         user.setEmail(request.getEmail());
 
         

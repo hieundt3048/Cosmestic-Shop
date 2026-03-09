@@ -10,9 +10,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cosmeticshop.cosmetic.Dto.ActiveUserTrafficResponse;
+import com.cosmeticshop.cosmetic.Dto.FinancialReportResponse;
 import com.cosmeticshop.cosmetic.Dto.OrderKpiResponse;
 import com.cosmeticshop.cosmetic.Dto.RevenueStatisticsResponse;
 import com.cosmeticshop.cosmetic.Dto.TopSellingProductResponse;
+import com.cosmeticshop.cosmetic.Service.FinancialReportService;
 import com.cosmeticshop.cosmetic.Service.IActiveUserTrackingService;
 import com.cosmeticshop.cosmetic.Service.IOrderKpiReportService;
 import com.cosmeticshop.cosmetic.Service.IRevenueReportService;
@@ -26,16 +28,19 @@ public class ReportController {
     private final IOrderKpiReportService orderKpiReportService;
     private final ITopSellingProductReportService topSellingProductReportService;
     private final IActiveUserTrackingService activeUserTrackingService;
+    private final FinancialReportService financialReportService;
 
     public ReportController(
             IRevenueReportService revenueReportService,
             IOrderKpiReportService orderKpiReportService,
             ITopSellingProductReportService topSellingProductReportService,
-            IActiveUserTrackingService activeUserTrackingService) {
+            IActiveUserTrackingService activeUserTrackingService,
+            FinancialReportService financialReportService) {
         this.revenueReportService = revenueReportService;
         this.orderKpiReportService = orderKpiReportService;
         this.topSellingProductReportService = topSellingProductReportService;
         this.activeUserTrackingService = activeUserTrackingService;
+        this.financialReportService = financialReportService;
     }
 
     @GetMapping("/revenue")
@@ -64,5 +69,12 @@ public class ReportController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ActiveUserTrafficResponse> getActiveUserTraffic() {
         return ResponseEntity.ok(activeUserTrackingService.getActiveUserTraffic());
+    }
+
+    @GetMapping("/financial")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<FinancialReportResponse> getFinancialReport(
+            @RequestParam(defaultValue = "month") String range) {
+        return ResponseEntity.ok(financialReportService.getFinancialReport(range));
     }
 }

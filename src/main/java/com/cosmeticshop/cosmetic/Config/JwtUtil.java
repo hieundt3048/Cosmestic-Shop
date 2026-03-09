@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.cosmeticshop.cosmetic.Entity.User;
+import com.cosmeticshop.cosmetic.Service.RuntimeSecuritySettingsService;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -27,13 +28,15 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtil {
 
+    private final RuntimeSecuritySettingsService runtimeSecuritySettingsService;
+
+    public JwtUtil(RuntimeSecuritySettingsService runtimeSecuritySettingsService) {
+        this.runtimeSecuritySettingsService = runtimeSecuritySettingsService;
+    }
+
     // Secret key để mã hóa/giải mã token - lấy từ application.properties
     @Value("${jwt.secret}")
     private String SECRET_KEY;
-
-    // Thời gian hết hạn token (milliseconds) - 1 giờ
-    @Value("${jwt.expiration:3600000}")
-    private long EXPIRATION_TIME;
 
     /**
      * Tạo Secret Key từ chuỗi SECRET_KEY
@@ -63,7 +66,7 @@ public class JwtUtil {
                 .claims(claims)                              // Thêm custom data
                 .subject(user.getUsername())                 // Username làm subject
                 .issuedAt(new Date())                        // Thời gian tạo
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) // Thời gian hết hạn
+            .expiration(new Date(System.currentTimeMillis() + runtimeSecuritySettingsService.getJwtExpirationMs())) // Thời gian hết hạn
                 .signWith(getSigningKey())                   // Ký token bằng secret key
                 .compact();                                  // Build thành chuỗi JWT
     }
