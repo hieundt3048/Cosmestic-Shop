@@ -131,7 +131,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/audit-logs/**").hasRole("ADMIN")
                 .requestMatchers("/api/system-settings/**").hasRole("ADMIN")
                 .requestMatchers("/api/traffic/**").hasAnyRole("CUSTOMER", "EMPLOYEE", "ADMIN")
-                .requestMatchers("/api/orders/**").hasAnyRole("CUSTOMER", "ADMIN")
+                .requestMatchers("/api/orders/**").hasAnyRole("CUSTOMER", "EMPLOYEE", "ADMIN")
                 
                 .anyRequest().authenticated()  // Các endpoint khác yêu cầu xác thực
             )

@@ -1,9 +1,14 @@
 package com.cosmeticshop.cosmetic.Service;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.cosmeticshop.cosmetic.Dto.CreateProductRequest;
@@ -24,18 +29,30 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final BrandRepository brandRepository;
     private final CategoryRepository categoryRepository;
+    private final IAuditLogService auditLogService;
 
     public ProductService(ProductRepository productRepository,
                          BrandRepository brandRepository,
-                         CategoryRepository categoryRepository) {
+                         CategoryRepository categoryRepository,
+                         IAuditLogService auditLogService) {
         this.productRepository = productRepository;
         this.brandRepository = brandRepository;
         this.categoryRepository = categoryRepository;
+        this.auditLogService = auditLogService;
     }
 
         // Trả toàn bộ sản phẩm theo dạng DTO để controller trả JSON ổn định.
     public List<ProductResponse> getAllProducts() {
-        return productRepository.findAll().stream()
+        List<Product> products = productRepository.findAll();
+
+        // Admin/employee xem toàn bộ sản phẩm (kể cả hidden); khách chỉ xem sản phẩm visible.
+        if (!isPrivilegedInventoryRole()) {
+            products = products.stream()
+                    .filter(this::isVisibleForCustomer)
+                    .collect(Collectors.toList());
+        }
+
+        return products.stream()
                 .map(this::toProductResponse)
                 .collect(Collectors.toList());
     }
@@ -44,7 +61,25 @@ public class ProductService {
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Product với id: " + id));
+
+        if (!isPrivilegedInventoryRole() && !isVisibleForCustomer(product)) {
+            throw new ResourceNotFoundException("Không tìm thấy Product với id: " + id);
+        }
+
         return toProductResponse(product);
+    }
+
+    public List<ProductResponse> getEmployeeInventory(String query, Long brandId, Long categoryId, String visibility) {
+        String normalizedQuery = normalize(query);
+        String normalizedVisibility = normalize(visibility);
+
+        return productRepository.findAll().stream()
+                .filter(product -> filterByProductText(product, normalizedQuery))
+                .filter(product -> brandId == null || (product.getBrand() != null && brandId.equals(product.getBrand().getId())))
+                .filter(product -> categoryId == null || (product.getCategory() != null && categoryId.equals(product.getCategory().getId())))
+                .filter(product -> filterByVisibility(product, normalizedVisibility))
+                .map(this::toProductResponse)
+                .collect(Collectors.toList());
     }
     
         // Tạo sản phẩm mới: kiểm tra brand/category hợp lệ trước khi gán dữ liệu sản phẩm.
@@ -64,7 +99,9 @@ public class ProductService {
                 request.getPrice(),
                 request.getDescription(),
                 request.getImageUrl(),
-                request.getStockQuantity());
+            request.getStockQuantity(),
+            request.getExpiryDate(),
+            request.getVisible());
 
         Product savedProduct = productRepository.save(product);
         return toProductResponse(savedProduct);
@@ -89,9 +126,80 @@ public class ProductService {
                 request.getPrice(),
                 request.getDescription(),
                 request.getImageUrl(),
-                request.getStockQuantity());
+                request.getStockQuantity(),
+                request.getExpiryDate(),
+                request.getVisible());
 
         return toProductResponse(productRepository.save(product));
+    }
+
+    public ProductResponse updateStockByEmployee(Long productId, Integer stockQuantity, String reason) {
+        if (stockQuantity == null || stockQuantity < 0) {
+            throw new RuntimeException("Tồn kho không hợp lệ");
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Product với id: " + productId));
+
+        Integer oldStock = product.getStockQuantity();
+        product.setStockQuantity(stockQuantity);
+
+        Product saved = productRepository.save(product);
+        auditLogService.logAction(
+                "EMPLOYEE_UPDATE_STOCK",
+                "product#" + productId,
+                String.format("Cập nhật tồn kho: %s -> %s | reason=%s",
+                        oldStock == null ? "N/A" : oldStock,
+                        stockQuantity,
+                        safeNote(reason)));
+
+        return toProductResponse(saved);
+    }
+
+    public ProductResponse updateVisibilityByEmployee(Long productId, Boolean visible, String reason) {
+        if (visible == null) {
+            throw new RuntimeException("visible không được để trống");
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Product với id: " + productId));
+
+        Boolean oldVisible = product.getVisible();
+        product.setVisible(visible);
+
+        Product saved = productRepository.save(product);
+        auditLogService.logAction(
+                "EMPLOYEE_UPDATE_PRODUCT_VISIBILITY",
+                "product#" + productId,
+                String.format("Ẩn/hiện sản phẩm: %s -> %s | reason=%s",
+                        oldVisible,
+                        visible,
+                        safeNote(reason)));
+
+        return toProductResponse(saved);
+    }
+
+    public ProductResponse updateExpiryByEmployee(Long productId, LocalDate expiryDate, String note) {
+        if (expiryDate == null) {
+            throw new RuntimeException("expiryDate không được để trống");
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Product với id: " + productId));
+
+        LocalDate oldExpiryDate = product.getExpiryDate();
+        product.setExpiryDate(expiryDate);
+
+        Product saved = productRepository.save(product);
+        auditLogService.logAction(
+                "EMPLOYEE_UPDATE_PRODUCT_EXPIRY",
+                "product#" + productId,
+                String.format("Cập nhật hạn dùng: %s -> %s | note=%s",
+                        oldExpiryDate,
+                        expiryDate,
+                        safeNote(note)));
+
+        return toProductResponse(saved);
     }
 
         // Xóa sản phẩm sau khi xác nhận tồn tại.
@@ -147,9 +255,10 @@ public class ProductService {
 
         // TODO tạm thời: hiện trả toàn bộ danh sách, chưa có full-text search theo query.
     public List<ProductResponse> searchProduct(String query) {
-        return productRepository.findAll().stream()
-                .map(this::toProductResponse)
-                .collect(Collectors.toList());
+        String normalizedQuery = normalize(query);
+        return getAllProducts().stream()
+            .filter(item -> filterByProductText(item, normalizedQuery))
+            .collect(Collectors.toList());
     }
 
         // Gom tất cả rule validate + normalize field để tái sử dụng cho cả create/update.
@@ -159,7 +268,9 @@ public class ProductService {
             Double price,
             String description,
             String imageUrl,
-            Integer stockQuantity) {
+            Integer stockQuantity,
+            LocalDate expiryDate,
+            Boolean visible) {
         if (name == null || name.trim().isEmpty()) {
             throw new RuntimeException("Tên sản phẩm không được để trống");
         }
@@ -179,6 +290,8 @@ public class ProductService {
                                                 ? "https://via.placeholder.com/300"
                                                 : imageUrl.trim());
         product.setStockQuantity(stockQuantity);
+        product.setExpiryDate(expiryDate);
+        product.setVisible(visible == null ? Boolean.TRUE : visible);
     }
 
         // Chuẩn hóa tồn kho null/âm về giá trị an toàn để tính toán thống kê.
@@ -215,7 +328,94 @@ public class ProductService {
                 product.getDescription(),
                 product.getImageUrl(),
                 product.getStockQuantity(),
+                product.getExpiryDate(),
+                product.getVisible(),
                 brandSummary,
                 categorySummary);
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String safeNote(String value) {
+        return value == null || value.trim().isEmpty() ? "N/A" : value.trim();
+    }
+
+    private boolean filterByProductText(Product product, String normalizedQuery) {
+        if (normalizedQuery.isEmpty()) {
+            return true;
+        }
+
+        String name = product.getName() == null ? "" : product.getName().toLowerCase(Locale.ROOT);
+        String description = product.getDescription() == null ? "" : product.getDescription().toLowerCase(Locale.ROOT);
+        String brandName = product.getBrand() == null || product.getBrand().getName() == null
+                ? ""
+                : product.getBrand().getName().toLowerCase(Locale.ROOT);
+        String categoryName = product.getCategory() == null || product.getCategory().getName() == null
+                ? ""
+                : product.getCategory().getName().toLowerCase(Locale.ROOT);
+
+        return String.valueOf(product.getId()).contains(normalizedQuery)
+                || name.contains(normalizedQuery)
+                || description.contains(normalizedQuery)
+                || brandName.contains(normalizedQuery)
+                || categoryName.contains(normalizedQuery);
+    }
+
+    private boolean filterByProductText(ProductResponse product, String normalizedQuery) {
+        if (normalizedQuery.isEmpty()) {
+            return true;
+        }
+
+        String name = product.getName() == null ? "" : product.getName().toLowerCase(Locale.ROOT);
+        String description = product.getDescription() == null ? "" : product.getDescription().toLowerCase(Locale.ROOT);
+        String brandName = product.getBrand() == null || product.getBrand().getName() == null
+                ? ""
+                : product.getBrand().getName().toLowerCase(Locale.ROOT);
+        String categoryName = product.getCategory() == null || product.getCategory().getName() == null
+                ? ""
+                : product.getCategory().getName().toLowerCase(Locale.ROOT);
+
+        return String.valueOf(product.getId()).contains(normalizedQuery)
+                || name.contains(normalizedQuery)
+                || description.contains(normalizedQuery)
+                || brandName.contains(normalizedQuery)
+                || categoryName.contains(normalizedQuery);
+    }
+
+    private boolean filterByVisibility(Product product, String normalizedVisibility) {
+        if (normalizedVisibility.isEmpty() || normalizedVisibility.equals("all")) {
+            return true;
+        }
+
+        boolean visible = !Boolean.FALSE.equals(product.getVisible());
+        if (normalizedVisibility.equals("visible")) {
+            return visible;
+        }
+        if (normalizedVisibility.equals("hidden")) {
+            return !visible;
+        }
+        return true;
+    }
+
+    private boolean isVisibleForCustomer(Product product) {
+        return !Boolean.FALSE.equals(product.getVisible());
+    }
+
+    private boolean isPrivilegedInventoryRole() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
+        }
+
+        for (GrantedAuthority authority : authentication.getAuthorities()) {
+            String name = authority.getAuthority();
+            if ("ROLE_ADMIN".equals(name) || "ROLE_EMPLOYEE".equals(name)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

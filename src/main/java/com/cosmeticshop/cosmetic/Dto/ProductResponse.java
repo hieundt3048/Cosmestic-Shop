@@ -1,5 +1,7 @@
 package com.cosmeticshop.cosmetic.Dto;
 
+import java.time.LocalDate;
+
 public class ProductResponse {
 
     private Long id;
@@ -9,6 +11,8 @@ public class ProductResponse {
     private String description;
     private String imageUrl;
     private Integer stockQuantity;
+    private LocalDate expiryDate;
+    private Boolean visible;
     private BrandSummary brand;
     private CategorySummary category;
 
@@ -16,7 +20,7 @@ public class ProductResponse {
     }
 
     public ProductResponse(Long id, String name, Double price, String description, String imageUrl,
-            Integer stockQuantity, BrandSummary brand, CategorySummary category) {
+            Integer stockQuantity, LocalDate expiryDate, Boolean visible, BrandSummary brand, CategorySummary category) {
         this.id = id;
         this.name = name;
         this.productName = name;
@@ -24,6 +28,8 @@ public class ProductResponse {
         this.description = description;
         this.imageUrl = imageUrl;
         this.stockQuantity = stockQuantity;
+        this.expiryDate = expiryDate;
+        this.visible = visible;
         this.brand = brand;
         this.category = category;
     }
@@ -86,6 +92,22 @@ public class ProductResponse {
 
     public void setStockQuantity(Integer stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public Boolean getVisible() {
+        return visible;
+    }
+
+    public void setVisible(Boolean visible) {
+        this.visible = visible;
     }
 
     public BrandSummary getBrand() {

@@ -1,5 +1,7 @@
 package com.cosmeticshop.cosmetic.Dto;
 
+import java.time.LocalDate;
+
 public class UpdateProductRequest {
 
     private String name;
@@ -9,6 +11,8 @@ public class UpdateProductRequest {
     private Integer stockQuantity;
     private Long brandId;
     private Long categoryId;
+    private LocalDate expiryDate;
+    private Boolean visible;
 
     public String getName() {
         return name;
@@ -64,5 +68,21 @@ public class UpdateProductRequest {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public Boolean getVisible() {
+        return visible;
+    }
+
+    public void setVisible(Boolean visible) {
+        this.visible = visible;
     }
 }

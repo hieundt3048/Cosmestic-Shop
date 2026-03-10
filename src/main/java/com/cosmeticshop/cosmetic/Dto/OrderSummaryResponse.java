@@ -11,6 +11,7 @@ public class OrderSummaryResponse {
     private String status;
     private Long customerId;
     private String customerName;
+    private String customerPhone;
     private String shippingAddress;
     private Integer totalItems;
     private List<OrderItemSummaryResponse> items;
@@ -25,6 +26,7 @@ public class OrderSummaryResponse {
             String status,
             Long customerId,
             String customerName,
+            String customerPhone,
             String shippingAddress,
             Integer totalItems,
             List<OrderItemSummaryResponse> items) {
@@ -34,6 +36,7 @@ public class OrderSummaryResponse {
         this.status = status;
         this.customerId = customerId;
         this.customerName = customerName;
+        this.customerPhone = customerPhone;
         this.shippingAddress = shippingAddress;
         this.totalItems = totalItems;
         this.items = items;
@@ -85,6 +88,14 @@ public class OrderSummaryResponse {
 
     public void setCustomerName(String customerName) {
         this.customerName = customerName;
+    }
+
+    public String getCustomerPhone() {
+        return customerPhone;
+    }
+
+    public void setCustomerPhone(String customerPhone) {
+        this.customerPhone = customerPhone;
     }
 
     public String getShippingAddress() {

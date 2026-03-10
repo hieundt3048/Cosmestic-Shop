@@ -17,6 +17,13 @@ import com.cosmeticshop.cosmetic.Repository.SystemSettingsRepository;
 import jakarta.transaction.Transactional;
 
 @Service
+/**
+ * Quan ly cau hinh he thong o muc toan cuc.
+ *
+ * Thiet ke singleton:
+ * - Chi dung 1 ban ghi trong bang system_settings voi id = 1.
+ * - Neu chua ton tai thi tu dong tao ban ghi default.
+ */
 public class SystemSettingsService {
 
     private static final long SINGLETON_ID = 1L;
@@ -47,10 +54,17 @@ public class SystemSettingsService {
         this.auditLogService = auditLogService;
     }
 
+    /**
+     * Lay settings hien tai cho API response.
+     */
     public SystemSettingsResponse getSettings() {
         return toResponse(getOrCreateSettings());
     }
 
+    /**
+     * Lay ban ghi singleton, neu chua co thi khoi tao gia tri mac dinh.
+     * Gia tri default duoc dung de he thong chay an toan ngay lan dau.
+     */
     public SystemSettings getOrCreateSettings() {
         Optional<SystemSettings> existing = systemSettingsRepository.findById(SINGLETON_ID);
         if (existing.isPresent()) {
@@ -79,6 +93,10 @@ public class SystemSettingsService {
     }
 
     @Transactional
+    /**
+     * Cap nhat nhom cau hinh chung cua cua hang.
+     * Co trim text va ghi audit de truy vet thay doi.
+     */
     public SystemSettingsResponse updateGeneralSettings(UpdateGeneralSettingsRequest request) {
         SystemSettings settings = getOrCreateSettings();
         settings.setShopName(request.getShopName().trim());
@@ -97,6 +115,13 @@ public class SystemSettingsService {
     }
 
     @Transactional
+    /**
+     * Cap nhat chinh sach bao mat runtime:
+     * - min password length
+     * - session timeout
+     * - jwt expiration
+     * - bcrypt rounds
+     */
     public SystemSettingsResponse updateSecuritySettings(UpdateSecuritySettingsRequest request) {
         SystemSettings settings = getOrCreateSettings();
         settings.setMinPasswordLength(request.getMinPasswordLength());
@@ -114,6 +139,10 @@ public class SystemSettingsService {
     }
 
     @Transactional
+    /**
+     * Cap nhat cau hinh backup dinh ky.
+     * Gia tri nay duoc BackupService doc de quyet dinh thoi diem backup.
+     */
     public SystemSettingsResponse updateBackupSettings(UpdateBackupSettingsRequest request) {
         SystemSettings settings = getOrCreateSettings();
         settings.setAutoBackupEnabled(Boolean.TRUE.equals(request.getAutoBackupEnabled()));
@@ -129,6 +158,9 @@ public class SystemSettingsService {
         return toResponse(saved);
     }
 
+    /**
+     * Map entity -> response DTO de FE nhan du lieu dong nhat.
+     */
     private SystemSettingsResponse toResponse(SystemSettings settings) {
         SystemSettingsResponse response = new SystemSettingsResponse();
         response.setShopName(settings.getShopName());
@@ -151,6 +183,10 @@ public class SystemSettingsService {
         return response;
     }
 
+    /**
+     * Lay actor tu SecurityContext.
+     * Fallback "system" cho scheduler/background hoac request khong co auth.
+     */
     private String getCurrentActorUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {

@@ -1,5 +1,7 @@
 package com.cosmeticshop.cosmetic.Dto;
 
+import java.time.LocalDate;
+
 public class CreateProductRequest {
     private String name;
     private Double price;
@@ -11,6 +13,8 @@ public class CreateProductRequest {
     private String categoryName;
     private Long brandId;
     private Long categoryId;
+    private LocalDate expiryDate;
+    private Boolean visible;
 
     // Getters and Setters
     public String getName() {
@@ -91,5 +95,21 @@ public class CreateProductRequest {
 
     public void setCategoryName(String categoryName) {
         this.categoryName = categoryName;
+    }
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public Boolean getVisible() {
+        return visible;
+    }
+
+    public void setVisible(Boolean visible) {
+        this.visible = visible;
     }
 }
