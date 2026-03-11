@@ -16,17 +16,21 @@ import org.springframework.web.bind.annotation.RestController;
 import com.cosmeticshop.cosmetic.Dto.CreateProductRequest;
 import com.cosmeticshop.cosmetic.Dto.InventorySummaryResponse;
 import com.cosmeticshop.cosmetic.Dto.ProductResponse;
+import com.cosmeticshop.cosmetic.Dto.PublicReviewResponse;
 import com.cosmeticshop.cosmetic.Dto.UpdateProductRequest;
 import com.cosmeticshop.cosmetic.Service.ProductService;
+import com.cosmeticshop.cosmetic.Service.ReviewService;
 
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
 
     private final ProductService productService;
+    private final ReviewService reviewService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, ReviewService reviewService) {
         this.productService = productService;
+        this.reviewService = reviewService;
     }
 
     // Tạo sản phẩm mới (giữ endpoint cũ để tương thích FE hiện tại)
@@ -53,6 +57,11 @@ public class ProductController {
     public ProductResponse getProductbyId(@PathVariable Long id) {
 
         return productService.getProductById(id);
+    }
+
+    @GetMapping("/{id}/reviews")
+    public List<PublicReviewResponse> getPublicReviewsByProduct(@PathVariable Long id) {
+        return reviewService.getPublicReviewsByProduct(id);
     }
 
     @PutMapping("/{id}")

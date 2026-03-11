@@ -14,6 +14,8 @@ import com.cosmeticshop.cosmetic.Entity.Order;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
+    List<Order> findByUserIdOrderByOrderDateDescIdDesc(Long userId);
+
 	List<Order> findByOrderDateBetween(LocalDate startDate, LocalDate endDate);
 
 	@Query("""

@@ -3,6 +3,7 @@ package com.cosmeticshop.cosmetic.Service;
 import java.util.List;
 
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.CustomerPurchaseHistoryResponse;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.UserListItemResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
@@ -71,6 +72,11 @@ public interface IUserManagementService {
      * Lấy danh sách khách hàng (role CUSTOMER)
      */
     List<UserListItemResponse> getCustomers();
+
+    /**
+     * Lấy thông tin liên hệ + lịch sử mua hàng của 1 khách.
+     */
+    CustomerPurchaseHistoryResponse getCustomerPurchaseHistory(Long customerId);
 
     /**
      * Lấy danh sách nhân viên (role EMPLOYEE)

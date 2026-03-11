@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.CustomerPurchaseHistoryResponse;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserLockRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRoleRequest;
@@ -56,9 +58,21 @@ public class UserController {
      * GET /api/users/customers
      */
     @GetMapping("/customers")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
     public ResponseEntity<List<UserListItemResponse>> getCustomers() {
         logger.info("Fetching users with role CUSTOMER");
         return ResponseEntity.ok(userManagementService.getCustomers());
+    }
+
+    /**
+     * Tra cứu lịch sử mua hàng chi tiết của khách.
+     * GET /api/users/customers/{id}/orders
+     */
+    @GetMapping("/customers/{id}/orders")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
+    public ResponseEntity<CustomerPurchaseHistoryResponse> getCustomerPurchaseHistory(@PathVariable Long id) {
+        logger.info("Fetching purchase history for customer ID: {}", id);
+        return ResponseEntity.ok(userManagementService.getCustomerPurchaseHistory(id));
     }
 
     /**

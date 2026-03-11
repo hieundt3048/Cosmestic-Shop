@@ -12,9 +12,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
+import com.cosmeticshop.cosmetic.Dto.CustomerPurchaseHistoryResponse;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.UserListItemResponse;
+import com.cosmeticshop.cosmetic.Entity.Order;
 import com.cosmeticshop.cosmetic.Entity.User;
+import com.cosmeticshop.cosmetic.Repository.OrderRepository;
 import com.cosmeticshop.cosmetic.Repository.UserRepository;
 
 import jakarta.transaction.Transactional;
@@ -32,19 +35,22 @@ public class UserManagementService implements IUserManagementService {
     private final IUserValidationService validationService;
     private final LoginAttemptService loginAttemptService;
     private final IAuditLogService auditLogService;
+    private final OrderRepository orderRepository;
     
     public UserManagementService(
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         IUserValidationService validationService,
         LoginAttemptService loginAttemptService,
-        IAuditLogService auditLogService
+        IAuditLogService auditLogService,
+        OrderRepository orderRepository
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.validationService = validationService;
         this.loginAttemptService = loginAttemptService;
         this.auditLogService = auditLogService;
+        this.orderRepository = orderRepository;
     }
     
     /**
@@ -291,6 +297,35 @@ public class UserManagementService implements IUserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public CustomerPurchaseHistoryResponse getCustomerPurchaseHistory(Long customerId) {
+        User customer = userRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("User khong ton tai voi ID: " + customerId));
+
+        if (customer.getRole() != User.Role.CUSTOMER) {
+            throw new RuntimeException("User voi ID " + customerId + " khong phai khach hang");
+        }
+
+        List<Order> orders = orderRepository.findByUserIdOrderByOrderDateDescIdDesc(customerId);
+        List<CustomerPurchaseHistoryResponse.OrderHistoryItem> orderItems = orders.stream()
+                .map(this::toCustomerOrderHistoryItem)
+                .collect(Collectors.toList());
+
+        auditLogService.logAction(
+                "LOOKUP_CUSTOMER_PURCHASE_HISTORY",
+                "user#" + customerId,
+                "Tra cuu lich su mua hang khach: " + customer.getUsername());
+
+        return new CustomerPurchaseHistoryResponse(
+                customer.getId(),
+                customer.getUsername(),
+                customer.getFullName(),
+                customer.getEmail(),
+                customer.getPhone(),
+                orderItems.size(),
+                orderItems);
+    }
+
     /**
      * Danh sách nhân viên để FE hiển thị theo vai trò.
      */
@@ -332,6 +367,26 @@ public class UserManagementService implements IUserManagementService {
                 user.getStatusUpdatedAt(),
                 user.getStatusUpdatedBy(),
                 totalOrders);
+    }
+
+    private CustomerPurchaseHistoryResponse.OrderHistoryItem toCustomerOrderHistoryItem(Order order) {
+        int totalItems = order.getOrderItems() == null
+                ? 0
+                : order.getOrderItems().stream()
+                        .filter(item -> item != null)
+                        .mapToInt(item -> {
+                            Integer quantity = item.getQuantity();
+                            return quantity == null ? 0 : quantity;
+                        })
+                        .sum();
+
+        return new CustomerPurchaseHistoryResponse.OrderHistoryItem(
+                order.getId(),
+                order.getOrderDate(),
+                order.getTotalAmount(),
+                order.getStatus() == null ? "UNKNOWN" : order.getStatus().name(),
+                order.getShippingAddress(),
+                totalItems);
     }
 
     private User.Status resolveStoredStatus(User user) {

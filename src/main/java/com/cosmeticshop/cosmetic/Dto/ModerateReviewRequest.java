@@ -1,0 +1,29 @@
+package com.cosmeticshop.cosmetic.Dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class ModerateReviewRequest {
+
+    @NotBlank
+    private String action;
+
+    @Size(max = 500)
+    private String reason;
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+}
