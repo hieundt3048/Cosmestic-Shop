@@ -51,6 +51,11 @@ export const productAPI = {
     return response.data;
   },
 
+  getPublicReviewsByProduct: async (productId) => {
+    const response = await api.get(`/products/${productId}/reviews`);
+    return response.data;
+  },
+
   // Tìm kiếm sản phẩm
   searchProducts: async (query) => {
     const response = await api.get('/products/search', { params: { query } });
@@ -61,6 +66,53 @@ export const productAPI = {
   getInventorySummary: async (lowStockThreshold = 10) => {
     const response = await api.get('/products/inventory/summary', {
       params: { lowStockThreshold },
+    });
+    return response.data;
+  },
+
+  // Inventory APIs cho employee/admin vận hành kho
+  getEmployeeInventory: async ({ q, brandId, categoryId, visibility } = {}) => {
+    const response = await api.get('/products/employee', {
+      params: { q, brandId, categoryId, visibility },
+    });
+    return response.data;
+  },
+
+  updateStockByEmployee: async (productId, stockQuantity, reason) => {
+    const response = await api.patch(`/products/employee/${productId}/stock`, {
+      stockQuantity,
+      reason,
+    });
+    return response.data;
+  },
+
+  updateExpiryByEmployee: async (productId, expiryDate, note) => {
+    const response = await api.patch(`/products/employee/${productId}/expiry`, {
+      expiryDate,
+      note,
+    });
+    return response.data;
+  },
+
+  updateVisibilityByEmployee: async (productId, visible, reason) => {
+    const response = await api.patch(`/products/employee/${productId}/visibility`, {
+      visible,
+      reason,
+    });
+    return response.data;
+  },
+
+  getEmployeeReviews: async ({ status, q } = {}) => {
+    const response = await api.get('/products/employee/reviews', {
+      params: { status, q },
+    });
+    return response.data;
+  },
+
+  moderateReviewByEmployee: async (reviewId, action, reason) => {
+    const response = await api.patch(`/products/employee/reviews/${reviewId}/moderation`, {
+      action,
+      reason,
     });
     return response.data;
   },

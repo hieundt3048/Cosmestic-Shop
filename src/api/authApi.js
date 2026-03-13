@@ -61,6 +61,14 @@ export const getCurrentUser = () => {
   return userStr ? JSON.parse(userStr) : null;
 };
 
+export const setCurrentUser = (user) => {
+  if (!user) {
+    localStorage.removeItem('user');
+    return;
+  }
+  localStorage.setItem('user', JSON.stringify(user));
+};
+
 // Kiểm tra đã đăng nhập chưa
 export const isAuthenticated = () => {
   return !!localStorage.getItem('token');

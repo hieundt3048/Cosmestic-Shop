@@ -45,6 +45,21 @@ export const orderAPI = {
     const response = await api.patch(`/orders/admin/complaints/${complaintId}/decision`, payload);
     return response.data;
   },
+
+  getEmployeeOrders: async ({ status, q } = {}) => {
+    const response = await api.get('/orders/employee', { params: { status, q } });
+    return response.data;
+  },
+
+  advanceEmployeeOrderStatus: async (orderId) => {
+    const response = await api.patch(`/orders/employee/${orderId}/advance`);
+    return response.data;
+  },
+
+  cancelOrderByEmployee: async (orderId, reason) => {
+    const response = await api.patch(`/orders/employee/${orderId}/cancel`, { reason });
+    return response.data;
+  },
 };
 
 export default api;

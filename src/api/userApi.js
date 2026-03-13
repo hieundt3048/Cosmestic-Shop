@@ -26,6 +26,11 @@ export const userAPI = {
     return response.data;
   },
 
+  getCustomerPurchaseHistory: async (id) => {
+    const response = await api.get(`/users/customers/${id}/orders`);
+    return response.data;
+  },
+
   getEmployees: async () => {
     const response = await api.get('/users/employees');
     return response.data;
@@ -63,6 +68,20 @@ export const userAPI = {
 
   updateUserStatus: async (id, status, reason) => {
     const response = await api.patch(`/users/${id}/status`, { status, reason });
+    return response.data;
+  },
+
+  updateMyProfile: async ({ fullName, phone }) => {
+    const response = await api.patch('/users/me/profile', { fullName, phone });
+    return response.data;
+  },
+
+  changeMyPassword: async ({ currentPassword, newPassword, confirmPassword }) => {
+    const response = await api.patch('/users/me/password', {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
     return response.data;
   },
 };

@@ -8,16 +8,27 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const data = await productAPI.getProductById(id);
-        setProduct(data);
+        setReviewsLoading(true);
+        const [productData, reviewData] = await Promise.all([
+          productAPI.getProductById(id),
+          productAPI.getPublicReviewsByProduct(id),
+        ]);
+        setProduct(productData);
+        setReviews(reviewData || []);
+      } catch {
+        setProduct(null);
+        setReviews([]);
       } finally {
         setLoading(false);
+        setReviewsLoading(false);
       }
     };
 
@@ -99,16 +110,26 @@ const ProductDetail = () => {
 
             <div className="border-t border-slate-100 pt-4">
               <h2 className="font-semibold text-slate-900 mb-3">Đánh giá gần đây</h2>
-              <div className="space-y-3 text-sm text-slate-700">
-                <div className="p-3 rounded-lg bg-slate-50">
-                  <p className="inline-flex items-center gap-1 text-amber-500 mb-1"><Star size={14} /> 5.0</p>
-                  <p>“Sản phẩm dùng rất ổn, thấm nhanh và không kích ứng.”</p>
+              {reviewsLoading ? (
+                <p className="text-sm text-slate-500">Đang tải đánh giá...</p>
+              ) : reviews.length === 0 ? (
+                <p className="text-sm text-slate-500">Chưa có đánh giá đã được duyệt cho sản phẩm này.</p>
+              ) : (
+                <div className="space-y-3 text-sm text-slate-700">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="p-3 rounded-lg bg-slate-50">
+                      <p className="inline-flex items-center gap-1 text-amber-500 mb-1">
+                        <Star size={14} /> {review.rating || 0}.0
+                      </p>
+                      <p className="mb-1">"{review.comment || 'Không có nội dung bình luận.'}"</p>
+                      <p className="text-xs text-slate-500">
+                        {review.customerName || 'Khách hàng'}
+                        {review.createdAt ? ` - ${new Date(review.createdAt).toLocaleDateString('vi-VN')}` : ''}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <div className="p-3 rounded-lg bg-slate-50">
-                  <p className="inline-flex items-center gap-1 text-amber-500 mb-1"><Star size={14} /> 4.0</p>
-                  <p>“Giá hợp lý, sẽ mua lại lần sau.”</p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

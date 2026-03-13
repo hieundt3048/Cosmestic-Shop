@@ -6,6 +6,7 @@ import { orderAPI } from '../api/orderApi';
 const ORDER_STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Chờ xử lý' },
   { value: 'CONFIRMED', label: 'Đã xác nhận' },
+  { value: 'PACKING', label: 'Đang đóng gói' },
   { value: 'SHIPPED', label: 'Đang giao' },
   { value: 'DELIVERED', label: 'Đã giao' },
   { value: 'CANCELED', label: 'Đã hủy' },
@@ -144,6 +145,7 @@ const Orders = () => {
     const statusConfig = {
       PENDING: { label: 'Chờ xử lý', className: 'bg-yellow-100 text-yellow-800' },
       CONFIRMED: { label: 'Đã xác nhận', className: 'bg-blue-100 text-blue-800' },
+      PACKING: { label: 'Đang đóng gói', className: 'bg-indigo-100 text-indigo-800' },
       SHIPPED: { label: 'Đang giao', className: 'bg-purple-100 text-purple-800' },
       DELIVERED: { label: 'Đã giao', className: 'bg-green-100 text-green-800' },
       CANCELED: { label: 'Đã hủy', className: 'bg-red-100 text-red-800' },
