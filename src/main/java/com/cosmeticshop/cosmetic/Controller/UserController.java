@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -16,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cosmeticshop.cosmetic.Dto.ChangeMyPasswordRequest;
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.CustomerPurchaseHistoryResponse;
+import com.cosmeticshop.cosmetic.Dto.UpdateMyProfileRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserLockRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRoleRequest;
@@ -147,5 +150,32 @@ public class UserController {
             @Valid @RequestBody UpdateUserStatusRequest request) {
         logger.info("Updating status for user ID: {} to {}", id, request.getStatus());
         return ResponseEntity.ok(userManagementService.updateUserStatus(id, request.getStatus(), request.getReason()));
+    }
+
+    /**
+     * Nhân viên tự cập nhật thông tin hồ sơ.
+     */
+    @PatchMapping("/me/profile")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
+    public ResponseEntity<UserListItemResponse> updateMyProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateMyProfileRequest request) {
+        String actor = authentication == null ? "" : authentication.getName();
+        logger.info("Updating own profile for user: {}", actor);
+        return ResponseEntity.ok(userManagementService.updateMyProfile(actor, request));
+    }
+
+    /**
+     * Nhân viên tự đổi mật khẩu tài khoản.
+     */
+    @PatchMapping("/me/password")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
+    public ResponseEntity<String> changeMyPassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangeMyPasswordRequest request) {
+        String actor = authentication == null ? "" : authentication.getName();
+        logger.info("Changing own password for user: {}", actor);
+        userManagementService.changeMyPassword(actor, request);
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
     }
 }

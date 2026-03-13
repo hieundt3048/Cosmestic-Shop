@@ -2,6 +2,7 @@ package com.cosmeticshop.cosmetic.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -11,8 +12,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.cosmeticshop.cosmetic.Dto.ChangeMyPasswordRequest;
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.CustomerPurchaseHistoryResponse;
+import com.cosmeticshop.cosmetic.Dto.UpdateMyProfileRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.UserListItemResponse;
 import com.cosmeticshop.cosmetic.Entity.Order;
@@ -258,6 +261,67 @@ public class UserManagementService implements IUserManagementService {
 
         logger.info("Updated status for user '{}' from {} to {}", savedUser.getUsername(), oldStatus, status);
         return toUserListItemResponse(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserListItemResponse updateMyProfile(String username, UpdateMyProfileRequest request) {
+        User user = getUserByUsername(username);
+
+        String normalizedPhone = request.getPhone() == null ? "" : request.getPhone().trim();
+        if (normalizedPhone.isEmpty()) {
+            throw new RuntimeException("Số điện thoại không được để trống");
+        }
+
+        Optional<User> duplicatePhone = userRepository.findByPhone(normalizedPhone);
+        if (duplicatePhone.isPresent() && !duplicatePhone.get().getId().equals(user.getId())) {
+            throw new RuntimeException("Số điện thoại đã được sử dụng bởi tài khoản khác");
+        }
+
+        String oldFullName = user.getFullName();
+        String oldPhone = user.getPhone();
+        String nextFullName = request.getFullName() == null ? "" : request.getFullName().trim();
+
+        user.setFullName(nextFullName.isEmpty() ? user.getFullName() : nextFullName);
+        user.setPhone(normalizedPhone);
+
+        User savedUser = userRepository.save(user);
+        auditLogService.logAction(
+                "EMPLOYEE_UPDATE_MY_PROFILE",
+                "user#" + savedUser.getId(),
+                String.format("Cap nhat ho so ca nhan (fullName: %s -> %s, phone: %s -> %s)",
+                        oldFullName,
+                        savedUser.getFullName(),
+                        oldPhone,
+                        savedUser.getPhone()));
+
+        return toUserListItemResponse(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public void changeMyPassword(String username, ChangeMyPasswordRequest request) {
+        User user = getUserByUsername(username);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu hiện tại không chính xác");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Xác nhận mật khẩu mới không khớp");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        auditLogService.logAction(
+                "EMPLOYEE_CHANGE_MY_PASSWORD",
+                "user#" + user.getId(),
+                "Nhân viên tự đổi mật khẩu tài khoản");
     }
     
     /**

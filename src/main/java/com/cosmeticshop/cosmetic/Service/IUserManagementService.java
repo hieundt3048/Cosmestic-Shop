@@ -2,8 +2,10 @@ package com.cosmeticshop.cosmetic.Service;
 
 import java.util.List;
 
+import com.cosmeticshop.cosmetic.Dto.ChangeMyPasswordRequest;
 import com.cosmeticshop.cosmetic.Dto.CreateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.CustomerPurchaseHistoryResponse;
+import com.cosmeticshop.cosmetic.Dto.UpdateMyProfileRequest;
 import com.cosmeticshop.cosmetic.Dto.UpdateUserRequest;
 import com.cosmeticshop.cosmetic.Dto.UserListItemResponse;
 import com.cosmeticshop.cosmetic.Entity.User;
@@ -57,6 +59,16 @@ public interface IUserManagementService {
      * Cập nhật status tài khoản (ACTIVE/POLICY_VIOLATION/FRAUD_SUSPECTED/...)
      */
     UserListItemResponse updateUserStatus(Long id, User.Status status, String reason);
+
+    /**
+     * Nhân viên tự cập nhật hồ sơ cá nhân.
+     */
+    UserListItemResponse updateMyProfile(String username, UpdateMyProfileRequest request);
+
+    /**
+     * Nhân viên tự đổi mật khẩu.
+     */
+    void changeMyPassword(String username, ChangeMyPasswordRequest request);
     
     /**
      * Lấy user theo ID
