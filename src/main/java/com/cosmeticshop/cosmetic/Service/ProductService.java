@@ -1,11 +1,17 @@
 package com.cosmeticshop.cosmetic.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,24 +27,104 @@ import com.cosmeticshop.cosmetic.Entity.Product;
 import com.cosmeticshop.cosmetic.Exception.ResourceNotFoundException;
 import com.cosmeticshop.cosmetic.Repository.BrandRepository;
 import com.cosmeticshop.cosmetic.Repository.CategoryRepository;
+import com.cosmeticshop.cosmetic.Repository.OrderRepository;
 import com.cosmeticshop.cosmetic.Repository.ProductRepository;
 
 @Service
+/**
+ * Service xử lý nghiệp vụ sản phẩm cho cả storefront, admin và employee.
+ */
 public class ProductService {
 
     private final ProductRepository productRepository;
     private final BrandRepository brandRepository;
     private final CategoryRepository categoryRepository;
+    private final OrderRepository orderRepository;
     private final IAuditLogService auditLogService;
 
     public ProductService(ProductRepository productRepository,
                          BrandRepository brandRepository,
                          CategoryRepository categoryRepository,
+                         OrderRepository orderRepository,
                          IAuditLogService auditLogService) {
         this.productRepository = productRepository;
         this.brandRepository = brandRepository;
         this.categoryRepository = categoryRepository;
+        this.orderRepository = orderRepository;
         this.auditLogService = auditLogService;
+    }
+
+    /**
+     * New Arrivals: lấy sản phẩm mới nhất theo ID (giả định ID tăng dần theo thời gian tạo).
+     * Chỉ trả sản phẩm visible cho khách storefront.
+     */
+    public List<ProductResponse> getNewArrivals(Integer limit) {
+        int normalizedLimit = normalizeLimit(limit, 8, 24);
+
+        return productRepository.findAll().stream()
+                .filter(this::isVisibleForCustomer)
+                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(normalizedLimit)
+                .map(this::toProductResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Best Sellers: ưu tiên sản phẩm có số lượng bán cao nhất trong 6 tháng gần đây.
+     * Nếu dữ liệu không đủ, bổ sung bằng New Arrivals để giao diện luôn đủ item.
+     */
+    public List<ProductResponse> getBestSellers(Integer limit) {
+        int normalizedLimit = normalizeLimit(limit, 8, 24);
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusMonths(6);
+
+        // Lấy danh sách top selling từ order_items (chỉ tính đơn DELIVERED ở repository query).
+        List<Object[]> rows = orderRepository.findTopSellingProducts(
+                startDate,
+                endDate,
+                PageRequest.of(0, normalizedLimit * 3));
+
+        List<Long> orderedProductIds = rows.stream()
+                .map(row -> ((Number) row[0]).longValue())
+                .toList();
+
+        Map<Long, Product> productsById = new LinkedHashMap<>();
+        if (!orderedProductIds.isEmpty()) {
+            productRepository.findAllById(orderedProductIds)
+                    .forEach(product -> productsById.put(product.getId(), product));
+        }
+
+        List<ProductResponse> result = new ArrayList<>();
+        Set<Long> selectedIds = new LinkedHashSet<>();
+
+        for (Long productId : orderedProductIds) {
+            Product product = productsById.get(productId);
+            if (product == null || !isVisibleForCustomer(product) || selectedIds.contains(productId)) {
+                continue;
+            }
+
+            result.add(toProductResponse(product));
+            selectedIds.add(productId);
+            if (result.size() >= normalizedLimit) {
+                break;
+            }
+        }
+
+        if (result.size() < normalizedLimit) {
+            // Fallback để FE luôn render đủ số lượng card mong muốn.
+            for (ProductResponse fallback : getNewArrivals(normalizedLimit * 2)) {
+                if (fallback.getId() == null || selectedIds.contains(fallback.getId())) {
+                    continue;
+                }
+                result.add(fallback);
+                selectedIds.add(fallback.getId());
+                if (result.size() >= normalizedLimit) {
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 
         // Trả toàn bộ sản phẩm theo dạng DTO để controller trả JSON ổn định.
@@ -253,7 +339,7 @@ public class ProductService {
                 suggestions);
     }
 
-        // TODO tạm thời: hiện trả toàn bộ danh sách, chưa có full-text search theo query.
+        // Search storefront theo id/tên/mô tả/thương hiệu/danh mục (không phân biệt hoa thường).
     public List<ProductResponse> searchProduct(String query) {
         String normalizedQuery = normalize(query);
         return getAllProducts().stream()
@@ -340,6 +426,14 @@ public class ProductService {
 
     private String safeNote(String value) {
         return value == null || value.trim().isEmpty() ? "N/A" : value.trim();
+    }
+
+    // Chuẩn hóa giới hạn để tránh request quá lớn ảnh hưởng hiệu năng.
+    private int normalizeLimit(Integer rawLimit, int defaultValue, int maxValue) {
+        if (rawLimit == null || rawLimit < 1) {
+            return defaultValue;
+        }
+        return Math.min(rawLimit, maxValue);
     }
 
     private boolean filterByProductText(Product product, String normalizedQuery) {

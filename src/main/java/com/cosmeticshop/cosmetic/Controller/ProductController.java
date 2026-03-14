@@ -52,6 +52,18 @@ public class ProductController {
         return productService.getAllProducts();
     }
 
+    @GetMapping("/new-arrivals")
+    public List<ProductResponse> getNewArrivals(
+            @RequestParam(defaultValue = "8") Integer limit) {
+        return productService.getNewArrivals(limit);
+    }
+
+    @GetMapping("/best-sellers")
+    public List<ProductResponse> getBestSellers(
+            @RequestParam(defaultValue = "8") Integer limit) {
+        return productService.getBestSellers(limit);
+    }
+
     // Lấy sản phẩm theo id
     @GetMapping("/{id}")
     public ProductResponse getProductbyId(@PathVariable Long id) {
@@ -85,8 +97,8 @@ public class ProductController {
     
     // Tìm kiếm sản phẩm
     @GetMapping("/search")
-    public String searchMethod(@RequestParam String query) {
-        return query;
+    public List<ProductResponse> searchMethod(@RequestParam String query) {
+        return productService.searchProduct(query);
     }
     
 }
