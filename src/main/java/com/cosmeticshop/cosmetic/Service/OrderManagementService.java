@@ -1,6 +1,7 @@
 package com.cosmeticshop.cosmetic.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -9,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.cosmeticshop.cosmetic.Dto.CreateCustomerOrderRequest;
 import com.cosmeticshop.cosmetic.Dto.CreateOrderComplaintRequest;
 import com.cosmeticshop.cosmetic.Dto.OrderComplaintResponse;
 import com.cosmeticshop.cosmetic.Dto.OrderItemSummaryResponse;
@@ -16,9 +18,16 @@ import com.cosmeticshop.cosmetic.Dto.OrderSummaryResponse;
 import com.cosmeticshop.cosmetic.Dto.ResolveOrderComplaintRequest;
 import com.cosmeticshop.cosmetic.Entity.Order;
 import com.cosmeticshop.cosmetic.Entity.OrderComplaint;
+import com.cosmeticshop.cosmetic.Entity.OrderItem;
+import com.cosmeticshop.cosmetic.Entity.Product;
+import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Exception.ResourceNotFoundException;
 import com.cosmeticshop.cosmetic.Repository.OrderComplaintRepository;
 import com.cosmeticshop.cosmetic.Repository.OrderRepository;
+import com.cosmeticshop.cosmetic.Repository.ProductRepository;
+import com.cosmeticshop.cosmetic.Repository.UserRepository;
+
+import jakarta.transaction.Transactional;
 
 @Service
 /**
@@ -31,15 +40,96 @@ public class OrderManagementService {
 
     private final OrderRepository orderRepository;
     private final OrderComplaintRepository orderComplaintRepository;
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
     private final IAuditLogService auditLogService;
 
     public OrderManagementService(
             OrderRepository orderRepository,
             OrderComplaintRepository orderComplaintRepository,
+            ProductRepository productRepository,
+            UserRepository userRepository,
             IAuditLogService auditLogService) {
         this.orderRepository = orderRepository;
         this.orderComplaintRepository = orderComplaintRepository;
+        this.productRepository = productRepository;
+        this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+    }
+
+    @Transactional
+    public OrderSummaryResponse createOrderByCustomer(String username, CreateCustomerOrderRequest request) {
+        User customer = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản khách hàng: " + username));
+
+        if (customer.getRole() != User.Role.CUSTOMER) {
+            throw new RuntimeException("Chỉ tài khoản CUSTOMER mới được đặt hàng");
+        }
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new RuntimeException("Danh sách sản phẩm không được để trống");
+        }
+
+        Order order = new Order();
+        order.setOrderDate(java.time.LocalDate.now());
+        order.setStatus(Order.Status.PENDING);
+        order.setUser(customer);
+        order.setShippingAddress(safeTrim(request.getShippingAddress()));
+        order.setShippingPhone(safeTrim(request.getShippingPhone()));
+        order.setPaymentMethod(parsePaymentMethod(request.getPaymentMethod()));
+
+        List<OrderItem> orderItems = new ArrayList<>();
+        double totalAmount = 0.0;
+
+        for (com.cosmeticshop.cosmetic.Dto.CreateCustomerOrderItemRequest itemRequest : request.getItems()) {
+            Product product = productRepository.findById(itemRequest.getProductId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm với id: " + itemRequest.getProductId()));
+
+            if (Boolean.FALSE.equals(product.getVisible())) {
+                throw new RuntimeException("Sản phẩm hiện không khả dụng để đặt hàng: " + product.getName());
+            }
+
+            int quantity = safeInt(itemRequest.getQuantity());
+            if (quantity <= 0) {
+                throw new RuntimeException("Số lượng sản phẩm phải lớn hơn 0");
+            }
+
+            int currentStock = safeInt(product.getStockQuantity());
+            if (currentStock < quantity) {
+                throw new RuntimeException("Sản phẩm '" + product.getName() + "' không đủ tồn kho. Còn lại: " + currentStock);
+            }
+
+            double unitPrice = safeDouble(product.getPrice());
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setProduct(product);
+            orderItem.setQuantity(quantity);
+            orderItem.setPrice(unitPrice);
+            orderItems.add(orderItem);
+
+            totalAmount += unitPrice * quantity;
+            product.setStockQuantity(currentStock - quantity);
+        }
+
+        order.setOrderItems(orderItems);
+        order.setTotalAmount(totalAmount);
+
+        Order savedOrder = orderRepository.save(order);
+        auditLogService.logAction(
+                "CUSTOMER_CREATE_ORDER",
+                "ORDER#" + savedOrder.getId(),
+                "Khách hàng đặt đơn mới với " + orderItems.size() + " sản phẩm");
+
+        return toOrderSummary(savedOrder);
+    }
+
+    public List<OrderSummaryResponse> getMyOrders(String username) {
+        User customer = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản khách hàng: " + username));
+
+        return orderRepository.findByUserIdOrderByOrderDateDescIdDesc(customer.getId()).stream()
+                .map(this::toOrderSummary)
+                .collect(Collectors.toList());
     }
 
     public List<OrderSummaryResponse> getAllOrders(String status, String query) {
@@ -248,6 +338,8 @@ public class OrderManagementService {
                 resolveCustomerName(order),
                 resolveCustomerPhone(order),
                 order.getShippingAddress(),
+            resolveShippingPhone(order),
+            resolvePaymentMethod(order),
                 totalItems,
                 itemResponses);
     }
@@ -337,6 +429,25 @@ public class OrderManagementService {
         return phone.isEmpty() ? "N/A" : phone;
     }
 
+    private String resolveShippingPhone(Order order) {
+        if (order == null) {
+            return "N/A";
+        }
+
+        String shippingPhone = safeTrim(order.getShippingPhone());
+        if (!shippingPhone.isEmpty()) {
+            return shippingPhone;
+        }
+        return resolveCustomerPhone(order);
+    }
+
+    private String resolvePaymentMethod(Order order) {
+        if (order == null || order.getPaymentMethod() == null) {
+            return "COD";
+        }
+        return order.getPaymentMethod().name();
+    }
+
     private Order.Status determineNextEmployeeStatus(Order.Status currentStatus) {
         // Quy trinh nghiep vu employee: Pending -> Confirmed -> Packing -> Shipped -> Delivered.
         if (currentStatus == null) {
@@ -366,6 +477,18 @@ public class OrderManagementService {
 
     private String safeStatusName(Order.Status status) {
         return status == null ? "UNKNOWN" : status.name();
+    }
+
+    private Order.PaymentMethod parsePaymentMethod(String rawValue) {
+        if (rawValue == null || rawValue.trim().isEmpty()) {
+            throw new RuntimeException("paymentMethod không được để trống");
+        }
+
+        try {
+            return Order.PaymentMethod.valueOf(rawValue.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new RuntimeException("paymentMethod không hợp lệ. Chỉ chấp nhận COD/BANK_TRANSFER");
+        }
     }
 
     private int safeInt(Integer value) {

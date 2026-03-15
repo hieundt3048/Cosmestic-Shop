@@ -58,6 +58,18 @@ public class Order {
     @Column(name = "shipping_address", columnDefinition = "NVARCHAR(500)")
     private String shippingAddress;
 
+    @Column(name = "shipping_phone", columnDefinition = "NVARCHAR(20)")
+    private String shippingPhone;
+
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "payment_method", columnDefinition = "NVARCHAR(30)")
+    private PaymentMethod paymentMethod;
+
+    public enum PaymentMethod {
+        COD,
+        BANK_TRANSFER
+    }
+
     //getter && setter
 
     public Long getId() {
@@ -95,6 +107,18 @@ public class Order {
     }
     public void setShippingAddress(String shippingAddress) {
         this.shippingAddress = shippingAddress;
+    }
+    public String getShippingPhone() {
+        return shippingPhone;
+    }
+    public void setShippingPhone(String shippingPhone) {
+        this.shippingPhone = shippingPhone;
+    }
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+    public void setPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
     public List<OrderItem> getOrderItems() {
         return orderItems;

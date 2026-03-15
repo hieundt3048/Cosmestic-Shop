@@ -13,6 +13,8 @@ public class OrderSummaryResponse {
     private String customerName;
     private String customerPhone;
     private String shippingAddress;
+    private String shippingPhone;
+    private String paymentMethod;
     private Integer totalItems;
     private List<OrderItemSummaryResponse> items;
 
@@ -28,6 +30,8 @@ public class OrderSummaryResponse {
             String customerName,
             String customerPhone,
             String shippingAddress,
+            String shippingPhone,
+            String paymentMethod,
             Integer totalItems,
             List<OrderItemSummaryResponse> items) {
         this.id = id;
@@ -38,6 +42,8 @@ public class OrderSummaryResponse {
         this.customerName = customerName;
         this.customerPhone = customerPhone;
         this.shippingAddress = shippingAddress;
+        this.shippingPhone = shippingPhone;
+        this.paymentMethod = paymentMethod;
         this.totalItems = totalItems;
         this.items = items;
     }
@@ -104,6 +110,22 @@ public class OrderSummaryResponse {
 
     public void setShippingAddress(String shippingAddress) {
         this.shippingAddress = shippingAddress;
+    }
+
+    public String getShippingPhone() {
+        return shippingPhone;
+    }
+
+    public void setShippingPhone(String shippingPhone) {
+        this.shippingPhone = shippingPhone;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 
     public Integer getTotalItems() {
