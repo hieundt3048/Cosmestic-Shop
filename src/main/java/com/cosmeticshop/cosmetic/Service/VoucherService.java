@@ -26,10 +26,15 @@ public class VoucherService {
 
     private final VoucherRepository voucherRepository;
     private final ProductRepository productRepository;
+    private final NotificationService notificationService;
 
-    public VoucherService(VoucherRepository voucherRepository, ProductRepository productRepository) {
+    public VoucherService(
+            VoucherRepository voucherRepository,
+            ProductRepository productRepository,
+            NotificationService notificationService) {
         this.voucherRepository = voucherRepository;
         this.productRepository = productRepository;
+        this.notificationService = notificationService;
     }
 
     public List<VoucherResponse> getAllVouchers() {
@@ -61,7 +66,17 @@ public class VoucherService {
         // Neu scope=PRODUCT thi bat buoc resolve product, STORE thi de null.
         voucher.setProduct(resolveProductByScope(scope, request.getProductId()));
 
-        return toVoucherResponse(voucherRepository.save(voucher));
+        Voucher savedVoucher = voucherRepository.save(voucher);
+
+        if (savedVoucher.isActive()) {
+            String title = "Khuyến mãi mới: " + savedVoucher.getCode();
+            String content = "Giảm " + savedVoucher.getDiscountPercent() + "% cho "
+                    + (savedVoucher.getScope() == Voucher.Scope.STORE ? "toàn bộ cửa hàng" : "sản phẩm chọn lọc")
+                    + ".";
+            notificationService.broadcastPromotionNotification(title, content, "VOUCHER#" + savedVoucher.getId());
+        }
+
+        return toVoucherResponse(savedVoucher);
     }
 
     public VoucherResponse updateVoucherStatus(Long id, UpdateVoucherStatusRequest request) {

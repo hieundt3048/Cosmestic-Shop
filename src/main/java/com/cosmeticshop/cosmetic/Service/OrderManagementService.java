@@ -43,18 +43,21 @@ public class OrderManagementService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final IAuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     public OrderManagementService(
             OrderRepository orderRepository,
             OrderComplaintRepository orderComplaintRepository,
             ProductRepository productRepository,
             UserRepository userRepository,
-            IAuditLogService auditLogService) {
+            IAuditLogService auditLogService,
+            NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderComplaintRepository = orderComplaintRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -108,6 +111,7 @@ public class OrderManagementService {
             orderItems.add(orderItem);
 
             totalAmount += unitPrice * quantity;
+            // Trừ tồn kho ngay trong cùng transaction để đảm bảo nhất quán với đơn vừa tạo.
             product.setStockQuantity(currentStock - quantity);
         }
 
@@ -120,6 +124,12 @@ public class OrderManagementService {
                 "ORDER#" + savedOrder.getId(),
                 "Khách hàng đặt đơn mới với " + orderItems.size() + " sản phẩm");
 
+        // Bắn thông báo trạng thái ban đầu (PENDING) cho khách ngay sau khi tạo đơn.
+        notificationService.createOrderStatusNotification(
+            savedOrder.getUser(),
+            savedOrder.getStatus() == null ? "PENDING" : savedOrder.getStatus().name(),
+            savedOrder.getId());
+
         return toOrderSummary(savedOrder);
     }
 
@@ -127,6 +137,7 @@ public class OrderManagementService {
         User customer = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản khách hàng: " + username));
 
+        // Chỉ lấy đơn thuộc chính user hiện tại, sắp xếp mới nhất trước.
         return orderRepository.findByUserIdOrderByOrderDateDescIdDesc(customer.getId()).stream()
                 .map(this::toOrderSummary)
                 .collect(Collectors.toList());
@@ -170,6 +181,10 @@ public class OrderManagementService {
                 "ORDER#" + orderId,
                 "Status: " + safeStatusName(oldStatus) + " -> " + safeStatusName(nextStatus));
 
+        if (saved.getUser() != null) {
+            notificationService.createOrderStatusNotification(saved.getUser(), safeStatusName(nextStatus), saved.getId());
+        }
+
         return toOrderSummary(saved);
     }
 
@@ -198,6 +213,10 @@ public class OrderManagementService {
                 "ORDER#" + orderId,
                 "Hủy đơn bởi nhân viên. Reason=" + reason.trim());
 
+        if (saved.getUser() != null) {
+            notificationService.createOrderStatusNotification(saved.getUser(), safeStatusName(saved.getStatus()), saved.getId());
+        }
+
         return toOrderSummary(saved);
     }
 
@@ -206,6 +225,7 @@ public class OrderManagementService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với id: " + orderId));
 
+        // Luồng admin cho phép set trực tiếp status đích (khác với employee đi theo từng bước).
         Order.Status nextStatus = parseOrderStatus(rawStatus);
         Order.Status oldStatus = order.getStatus();
         order.setStatus(nextStatus);
@@ -216,6 +236,10 @@ public class OrderManagementService {
                 "ORDER#" + orderId,
                 "Status: " + safeStatusName(oldStatus) + " -> " + safeStatusName(nextStatus)
                         + (reason == null || reason.trim().isEmpty() ? "" : (" | reason=" + reason.trim())));
+
+        if (saved.getUser() != null) {
+            notificationService.createOrderStatusNotification(saved.getUser(), safeStatusName(nextStatus), saved.getId());
+        }
 
         return toOrderSummary(saved);
     }
@@ -438,6 +462,7 @@ public class OrderManagementService {
         if (!shippingPhone.isEmpty()) {
             return shippingPhone;
         }
+        // Fallback về số điện thoại tài khoản khi đơn chưa lưu shippingPhone riêng.
         return resolveCustomerPhone(order);
     }
 
@@ -485,6 +510,7 @@ public class OrderManagementService {
         }
 
         try {
+            // Chỉ chấp nhận danh mục chuẩn để tránh dữ liệu thanh toán sai lệch.
             return Order.PaymentMethod.valueOf(rawValue.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new RuntimeException("paymentMethod không hợp lệ. Chỉ chấp nhận COD/BANK_TRANSFER");
