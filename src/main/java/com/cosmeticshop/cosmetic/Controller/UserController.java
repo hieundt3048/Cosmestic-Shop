@@ -153,10 +153,21 @@ public class UserController {
     }
 
     /**
-     * Nhân viên tự cập nhật thông tin hồ sơ.
+     * Người dùng đăng nhập tự xem hồ sơ cá nhân.
+     */
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('CUSTOMER','EMPLOYEE','ADMIN')")
+    public ResponseEntity<UserListItemResponse> getMyProfile(Authentication authentication) {
+        String actor = authentication == null ? "" : authentication.getName();
+        logger.info("Fetching own profile for user: {}", actor);
+        return ResponseEntity.ok(userManagementService.getMyProfile(actor));
+    }
+
+    /**
+     * Người dùng đăng nhập tự cập nhật thông tin hồ sơ.
      */
     @PatchMapping("/me/profile")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER','EMPLOYEE','ADMIN')")
     public ResponseEntity<UserListItemResponse> updateMyProfile(
             Authentication authentication,
             @Valid @RequestBody UpdateMyProfileRequest request) {
@@ -166,10 +177,10 @@ public class UserController {
     }
 
     /**
-     * Nhân viên tự đổi mật khẩu tài khoản.
+     * Người dùng đăng nhập tự đổi mật khẩu tài khoản.
      */
     @PatchMapping("/me/password")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER','EMPLOYEE','ADMIN')")
     public ResponseEntity<String> changeMyPassword(
             Authentication authentication,
             @Valid @RequestBody ChangeMyPasswordRequest request) {

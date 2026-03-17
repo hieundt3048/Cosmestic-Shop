@@ -268,7 +268,17 @@ public class UserManagementService implements IUserManagementService {
     public UserListItemResponse updateMyProfile(String username, UpdateMyProfileRequest request) {
         User user = getUserByUsername(username);
 
+        String normalizedEmail = request.getEmail() == null ? "" : request.getEmail().trim();
         String normalizedPhone = request.getPhone() == null ? "" : request.getPhone().trim();
+
+        // Email chỉ kiểm tra trùng khi người dùng có gửi giá trị mới.
+        if (!normalizedEmail.isEmpty()) {
+            Optional<User> duplicateEmail = userRepository.findByEmail(normalizedEmail);
+            if (duplicateEmail.isPresent() && !duplicateEmail.get().getId().equals(user.getId())) {
+                throw new RuntimeException("Email đã được sử dụng bởi tài khoản khác");
+            }
+        }
+
         if (normalizedPhone.isEmpty()) {
             throw new RuntimeException("Số điện thoại không được để trống");
         }
@@ -279,19 +289,24 @@ public class UserManagementService implements IUserManagementService {
         }
 
         String oldFullName = user.getFullName();
+        String oldEmail = user.getEmail();
         String oldPhone = user.getPhone();
         String nextFullName = request.getFullName() == null ? "" : request.getFullName().trim();
 
+        // Cho phép cập nhật từng phần: field để trống thì giữ nguyên giá trị cũ.
         user.setFullName(nextFullName.isEmpty() ? user.getFullName() : nextFullName);
+        user.setEmail(normalizedEmail.isEmpty() ? user.getEmail() : normalizedEmail);
         user.setPhone(normalizedPhone);
 
         User savedUser = userRepository.save(user);
         auditLogService.logAction(
-                "EMPLOYEE_UPDATE_MY_PROFILE",
+                "USER_UPDATE_MY_PROFILE",
                 "user#" + savedUser.getId(),
-                String.format("Cap nhat ho so ca nhan (fullName: %s -> %s, phone: %s -> %s)",
+                String.format("Cap nhat ho so ca nhan (fullName: %s -> %s, email: %s -> %s, phone: %s -> %s)",
                         oldFullName,
                         savedUser.getFullName(),
+                        oldEmail,
+                        savedUser.getEmail(),
                         oldPhone,
                         savedUser.getPhone()));
 
@@ -299,18 +314,26 @@ public class UserManagementService implements IUserManagementService {
     }
 
     @Override
+    public UserListItemResponse getMyProfile(String username) {
+        return toUserListItemResponse(getUserByUsername(username));
+    }
+
+    @Override
     @Transactional
     public void changeMyPassword(String username, ChangeMyPasswordRequest request) {
         User user = getUserByUsername(username);
 
+        // Bắt buộc xác thực mật khẩu hiện tại để tránh đổi mật khẩu trái phép.
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu hiện tại không chính xác");
         }
 
+        // Bảo vệ UX: yêu cầu nhập lại mật khẩu mới để giảm lỗi gõ nhầm.
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException("Xác nhận mật khẩu mới không khớp");
         }
 
+        // Không cho phép dùng lại mật khẩu cũ ngay lập tức.
         if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu mới phải khác mật khẩu hiện tại");
         }
@@ -319,9 +342,9 @@ public class UserManagementService implements IUserManagementService {
         userRepository.save(user);
 
         auditLogService.logAction(
-                "EMPLOYEE_CHANGE_MY_PASSWORD",
+                "USER_CHANGE_MY_PASSWORD",
                 "user#" + user.getId(),
-                "Nhân viên tự đổi mật khẩu tài khoản");
+                "Nguoi dung tu doi mat khau tai khoan");
     }
     
     /**
@@ -371,6 +394,7 @@ public class UserManagementService implements IUserManagementService {
         }
 
         List<Order> orders = orderRepository.findByUserIdOrderByOrderDateDescIdDesc(customerId);
+        // Chuyển đổi danh sách order sang DTO gọn để FE hiển thị lịch sử mua hàng.
         List<CustomerPurchaseHistoryResponse.OrderHistoryItem> orderItems = orders.stream()
                 .map(this::toCustomerOrderHistoryItem)
                 .collect(Collectors.toList());
@@ -411,7 +435,11 @@ public class UserManagementService implements IUserManagementService {
         int totalOrders = user.getOrders() == null ? 0 : user.getOrders().size();
         User.Status storedStatus = resolveStoredStatus(user);
         boolean tempLocked = loginAttemptService.isBlocked(user.getUsername());
+
+        // accountLocked dùng cho UI tổng quan: khóa khi bị khóa cứng hoặc đang bị khóa tạm.
         boolean accountLocked = storedStatus != User.Status.ACTIVE || tempLocked;
+
+        // Phân biệt TEMP_LOCKED để FE hiển thị rõ trường hợp bị khóa tạm do đăng nhập sai.
         String status = storedStatus == User.Status.ACTIVE && tempLocked ? "TEMP_LOCKED" : storedStatus.name();
         String statusReason = user.getStatusReason();
         if (storedStatus == User.Status.ACTIVE && tempLocked && (statusReason == null || statusReason.isBlank())) {
@@ -454,6 +482,7 @@ public class UserManagementService implements IUserManagementService {
     }
 
     private User.Status resolveStoredStatus(User user) {
+        // Dữ liệu cũ có thể null status, fallback ACTIVE để không vỡ luồng hiển thị/phân quyền.
         return user.getStatus() == null ? User.Status.ACTIVE : user.getStatus();
     }
 

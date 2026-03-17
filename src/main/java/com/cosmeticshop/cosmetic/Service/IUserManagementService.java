@@ -66,6 +66,11 @@ public interface IUserManagementService {
     UserListItemResponse updateMyProfile(String username, UpdateMyProfileRequest request);
 
     /**
+     * Người dùng đăng nhập tự xem hồ sơ cá nhân.
+     */
+    UserListItemResponse getMyProfile(String username);
+
+    /**
      * Nhân viên tự đổi mật khẩu.
      */
     void changeMyPassword(String username, ChangeMyPasswordRequest request);

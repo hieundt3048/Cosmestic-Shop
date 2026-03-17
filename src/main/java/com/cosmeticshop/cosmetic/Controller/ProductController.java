@@ -2,7 +2,9 @@ package com.cosmeticshop.cosmetic.Controller;
 
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cosmeticshop.cosmetic.Dto.CreateProductReviewRequest;
+import com.cosmeticshop.cosmetic.Dto.CustomerReviewResponse;
 import com.cosmeticshop.cosmetic.Dto.CreateProductRequest;
 import com.cosmeticshop.cosmetic.Dto.InventorySummaryResponse;
 import com.cosmeticshop.cosmetic.Dto.ProductResponse;
@@ -20,6 +24,8 @@ import com.cosmeticshop.cosmetic.Dto.PublicReviewResponse;
 import com.cosmeticshop.cosmetic.Dto.UpdateProductRequest;
 import com.cosmeticshop.cosmetic.Service.ProductService;
 import com.cosmeticshop.cosmetic.Service.ReviewService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/products")
@@ -74,6 +80,16 @@ public class ProductController {
     @GetMapping("/{id}/reviews")
     public List<PublicReviewResponse> getPublicReviewsByProduct(@PathVariable Long id) {
         return reviewService.getPublicReviewsByProduct(id);
+    }
+
+    @PostMapping("/{id}/reviews")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<CustomerReviewResponse> submitReviewByCustomer(
+            Authentication authentication,
+            @PathVariable Long id,
+            @Valid @RequestBody CreateProductReviewRequest request) {
+        String username = authentication == null ? "" : authentication.getName();
+        return ResponseEntity.status(201).body(reviewService.submitReviewByCustomer(username, id, request));
     }
 
     @PutMapping("/{id}")
