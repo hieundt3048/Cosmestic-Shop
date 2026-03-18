@@ -2,6 +2,7 @@ package com.cosmeticshop.cosmetic.Dto;
 
 import com.cosmeticshop.cosmetic.Entity.User;
 import com.cosmeticshop.cosmetic.Validation.ValidPassword;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -33,6 +34,9 @@ public class CreateUserRequest {
     @Size(max = 100, message = "Họ tên không được quá 100 ký tự")
     private String fullName;
     
+    // Role khong cho phep client truyen truc tiep tu JSON request.
+    // Service noi bo co the set role bang setter cho cac luong dac thu (vd: tao EMPLOYEE).
+    @JsonIgnore
     private User.Role role;
 
     //Getter && Setter

@@ -57,35 +57,15 @@ public class UserManagementService implements IUserManagementService {
     }
     
     /**
-     * Tạo tài khoản mới (dùng cho luồng đăng ký/chung).
+     * Tạo tài khoản mới cho luồng đăng ký công khai.
      * - Validate dữ liệu đầu vào qua validationService
      * - Mã hóa mật khẩu trước khi lưu DB
-     * - Gán role mặc định CUSTOMER nếu request không truyền role
+     * - Luôn gán role CUSTOMER (không nhận role từ client)
      */
     @Override
     @Transactional
     public User createUser(CreateUserRequest request) {
-        logger.info("Creating new user: {}", request.getUsername());
-        
-        validationService.validateUserRegistration(request);
-        
-        // Chỉ lo việc tạo user entity
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
-        user.setRole(request.getRole() != null ? request.getRole() : User.Role.CUSTOMER);
-        user.setStatus(User.Status.ACTIVE);
-        user.setStatusReason(null);
-        user.setStatusUpdatedAt(LocalDateTime.now());
-        user.setStatusUpdatedBy("system");
-        
-        User savedUser = userRepository.save(user);
-        logger.info("User '{}' created successfully with ID: {}", savedUser.getUsername(), savedUser.getId());
-        
-        return savedUser;
+        return createUserWithRole(request, User.Role.CUSTOMER);
     }
 
     /**
@@ -95,13 +75,35 @@ public class UserManagementService implements IUserManagementService {
     @Override
     @Transactional
     public UserListItemResponse createEmployee(CreateUserRequest request) {
-        request.setRole(User.Role.EMPLOYEE);
-        User createdUser = createUser(request);
+        User createdUser = createUserWithRole(request, User.Role.EMPLOYEE);
         auditLogService.logAction(
                 "CREATE_EMPLOYEE",
                 "user#" + createdUser.getId(),
                 "Tạo tài khoản nhân viên: " + createdUser.getUsername());
         return toUserListItemResponse(createdUser);
+    }
+
+    private User createUserWithRole(CreateUserRequest request, User.Role targetRole) {
+        logger.info("Creating new user: {} with role {}", request.getUsername(), targetRole);
+
+        validationService.validateUserRegistration(request);
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setRole(targetRole == null ? User.Role.CUSTOMER : targetRole);
+        user.setStatus(User.Status.ACTIVE);
+        user.setStatusReason(null);
+        user.setStatusUpdatedAt(LocalDateTime.now());
+        user.setStatusUpdatedBy("system");
+
+        User savedUser = userRepository.save(user);
+        logger.info("User '{}' created successfully with ID: {}", savedUser.getUsername(), savedUser.getId());
+
+        return savedUser;
     }
 
     /**

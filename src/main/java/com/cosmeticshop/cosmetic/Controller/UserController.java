@@ -50,6 +50,7 @@ public class UserController {
      * GET /api/users
      */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserListItemResponse>> getAllUsers() {
         logger.info("Fetching all users");
         List<UserListItemResponse> users = userManagementService.getAllUsers();
@@ -83,6 +84,7 @@ public class UserController {
      * GET /api/users/employees
      */
     @GetMapping("/employees")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserListItemResponse>> getEmployees() {
         logger.info("Fetching users with role EMPLOYEE");
         return ResponseEntity.ok(userManagementService.getEmployees());
@@ -93,6 +95,7 @@ public class UserController {
      * POST /api/users/employees
      */
     @PostMapping("/employees")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserListItemResponse> createEmployee(@Valid @RequestBody CreateUserRequest request) {
         logger.info("Creating employee user: {}", request.getUsername());
         return ResponseEntity.status(201).body(userManagementService.createEmployee(request));
@@ -103,6 +106,7 @@ public class UserController {
      * GET /api/users/{id}
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserListItemResponse> getUserById(@PathVariable Long id) {
         logger.info("Fetching user with ID: {}", id);
         return ResponseEntity.ok(userManagementService.getUserSummaryById(id));
@@ -113,6 +117,7 @@ public class UserController {
      * DELETE /api/users/{id}
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         logger.info("Deleting user with ID: {}", id);
         userManagementService.deleteUser(id);
@@ -123,12 +128,14 @@ public class UserController {
      * Chỉnh sửa thông tin User
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request){
         logger.info("Update user with ID: {}", id);
         return ResponseEntity.ok(userManagementService.updateUser(id, request));
     }
 
     @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserListItemResponse> updateUserRole(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserRoleRequest request) {
@@ -137,6 +144,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/lock")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserListItemResponse> updateUserLockStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserLockRequest request) {
@@ -145,6 +153,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserListItemResponse> updateUserStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserStatusRequest request) {

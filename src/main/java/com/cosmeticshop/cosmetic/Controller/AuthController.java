@@ -72,6 +72,9 @@ public class AuthController {
         logger.info("New user registration request: {}", request.getUsername());
         
         try {
+            // Defense in depth: luong dang ky cong khai chi duoc tao tai khoan CUSTOMER.
+            request.setRole(User.Role.CUSTOMER);
+
             // Bước 1-3: Tạo user mới (validation tự động được gọi trong service)
             User user = userManagementService.createUser(request);
             

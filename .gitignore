@@ -8,6 +8,8 @@ target/
 ### Application Properties ###
 src/main/resources/application.properties
 src/main/resources/application-*.properties
+src/main/resources/application-prod.properties.example
+src/main/resources/application-local.properties
 
 ### STS ###
 .apt_generated
